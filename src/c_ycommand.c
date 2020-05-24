@@ -341,7 +341,7 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
     int result = WEBIX_RESULT(kw);
     const char *comment = WEBIX_COMMENT(kw);
     if(result != 0){
-        printf("Error %d: %s\n", result, comment);
+        printf("%sERROR %d: '%s'%s\n", On_Red BWhite, result, comment, Color_Off);
     } else {
         if(!empty_string(comment)) {
             printf("%s\n", comment);

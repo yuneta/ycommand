@@ -141,7 +141,7 @@ static struct argp_option options[] = {
 {"realm_name",      'n',    "REALNAME", 0,      "Remote realm name.", 4},
 {"yuno_role",       'O',    "YUNOROLE", 0,      "Remote yuno role.", 4},
 {"yuno_name",       'o',    "YUNONAME", 0,      "Remote yuno name.", 4},
-{"service",         'S',    "SERVICE",  0,      "Remote yuno service (default '__default_service__').", 4},
+{"service",         'S',    "SERVICE",  0,      "Remote yuno service (default '__default_service__', __agent__ or __agent_yuno__ for agent).", 4},
 {"gobj_name",       'g',    "GOBJNAME", 0,      "GObj (named-gobj or full-path).", 4},
 {0,                 0,      0,          0,      "Local keys.", 5},
 {"print",           'p',    0,          0,      "Print configuration.", 5},

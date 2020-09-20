@@ -23,7 +23,7 @@
  *              Prototypes
  ***************************************************************************/
 PRIVATE int cmd_connect(hgobj gobj);
-PRIVATE int do_command(hgobj gobj);
+PRIVATE int do_command(hgobj gobj, const char *command);
 
 /***************************************************************************
  *          Data: config, public data, private data
@@ -37,12 +37,6 @@ PRIVATE sdata_desc_t tattr_desc[] = {
 SDATA (ASN_BOOLEAN,     "verbose",          0,          1,              "Verbose mode."),
 SDATA (ASN_OCTET_STR,   "command",          0,          "",             "Command."),
 SDATA (ASN_OCTET_STR,   "url",              0,          "ws://127.0.0.1:1991",  "Url to get Statistics. Can be a ip/hostname or a full url"),
-SDATA (ASN_OCTET_STR,   "realm_name",       0,          0,              "Realm name"),
-SDATA (ASN_OCTET_STR,   "yuno_name",        0,          0,              "Yuno name"),
-SDATA (ASN_OCTET_STR,   "yuno_role",        0,          0,              "Yuno role"),
-SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "__yuno__",     "Yuno service"),
-SDATA (ASN_OCTET_STR,   "gobj_name",        0,          "__default_service__", "Gobj."),
-
 SDATA (ASN_POINTER,     "gobj_connector",   0,          0,              "connection gobj"),
 SDATA (ASN_POINTER,     "user_data",        0,          0,              "user data"),
 SDATA (ASN_POINTER,     "user_data2",       0,          0,              "more user data"),
@@ -146,9 +140,9 @@ PRIVATE char agent_filter_chain_config[]= "\
     'name': '(^^__url__^^)',                    \n\
     'gclass': 'IEvent_cli',                     \n\
     'kw': {                                     \n\
-        'remote_yuno_name': '(^^__yuno_name__^^)',      \n\
-        'remote_yuno_role': '(^^__yuno_role__^^)',      \n\
-        'remote_yuno_service': '(^^__yuno_service__^^)' \n\
+        'remote_yuno_name': '',                 \n\
+        'remote_yuno_role': 'yuneta_agent',     \n\
+        'remote_yuno_service': 'agent'          \n\
     },                                          \n\
     'zchilds': [                                 \n\
         {                                               \n\
@@ -191,20 +185,14 @@ PRIVATE int cmd_connect(hgobj gobj)
         snprintf(_url, sizeof(_url), "ws://%s:1991", url); // TODO saca el puerto 1991 a configuración
         url = _url;
     }
-    const char *yuno_name = ""; // No direct connection, all through agent. gobj_read_str_attr(gobj, "yuno_name");
-    const char *yuno_role = "yuneta_agent"; // No direct connection, all through agent. gobj_read_str_attr(gobj, "yuno_role");
-    const char *yuno_service = "__default_service__"; //gobj_read_str_attr(gobj, "yuno_service");
 
     /*
      *  Each display window has a gobj to send the commands (saved in user_data).
      *  For external agents create a filter-chain of gobjs
      */
-    json_t * jn_config_variables = json_pack("{s:{s:s, s:s, s:s, s:s}}",
+    json_t * jn_config_variables = json_pack("{s:{s:s}}",
         "__json_config_variables__",
-            "__url__", url,
-            "__yuno_name__", yuno_name,
-            "__yuno_role__", yuno_role,
-            "__yuno_service__", yuno_service
+            "__url__", url
     );
     char *sjson_config_variables = json2str(jn_config_variables);
     JSON_DECREF(jn_config_variables);
@@ -230,47 +218,12 @@ PRIVATE int cmd_connect(hgobj gobj)
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE int do_command(hgobj gobj)
+PRIVATE int do_command(hgobj gobj, const char *command)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
-    GBUFFER *gbuf = gbuf_create(8*1024, 8*1024, 0, 0);
-    const char *realm_name = gobj_read_str_attr(gobj, "realm_name");
-    const char *yuno_name = gobj_read_str_attr(gobj, "yuno_name");
-    const char *yuno_role = gobj_read_str_attr(gobj, "yuno_role");
-    const char *yuno_service = gobj_read_str_attr(gobj, "yuno_service");
-    const char *command = gobj_read_str_attr(gobj, "command");
-    const char *gobj_name_ = gobj_read_str_attr(gobj, "gobj_name");
-
-    if(yuno_service && (
-            strcmp(yuno_service, "__agent__")==0 ||
-            strcmp(yuno_service, "__agent_yuno__")==0 ||
-            strcmp(yuno_service, "__yuneta_agent__")==0)) {
-        gbuf_printf(gbuf, "command-agent command=%s", command);
-        if(strcmp(yuno_service, "__agent_yuno__")==0) {
-            gbuf_printf(gbuf, " service=%s", "__yuno__");
-        }
-    } else {
-        gbuf_printf(gbuf, "command-yuno command=%s", command);
-        if(yuno_service) {
-            gbuf_printf(gbuf, " service=%s", yuno_service);
-        }
-    }
-    if(realm_name) {
-        gbuf_printf(gbuf, " realm_name=%s", realm_name);
-    }
-    if(yuno_role) {
-        gbuf_printf(gbuf, " yuno_role=%s", yuno_role);
-    }
-    if(yuno_name) {
-        gbuf_printf(gbuf, " yuno_name=%s", yuno_name);
-    }
-    if(gobj_name_) {
-        gbuf_printf(gbuf, " gobj_name='%s'", gobj_name_);
-    }
-
-    gobj_command(priv->gobj_connector, gbuf_cur_rd_pointer(gbuf), 0, gobj);
-    GBUF_DECREF(gbuf);
+    json_t *jn_resp = gobj_command(priv->gobj_connector, command, 0, gobj);
+    json_decref(jn_resp);
     return 0;
 }
 
@@ -303,7 +256,7 @@ PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
         gobj_set_exit_code(-1);
         gobj_shutdown();
     } else {
-        do_command(gobj);
+        do_command(gobj, command);
     }
 
     KW_DECREF(kw);

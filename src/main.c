@@ -28,11 +28,6 @@ struct arguments
     int print_role;
     char *url;
     char *command;
-    char *realm_name;
-    char *yuno_role;
-    char *yuno_name;
-    char *yuno_service;
-    char *gobj_name;
 
     int verbose;                /* verbose */
     int print;
@@ -138,11 +133,6 @@ static struct argp_option options[] = {
 {"command",         'c',    "COMMAND",  0,      "Command.", 2},
 {0,                 0,      0,          0,      "Connection keys", 4},
 {"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 4},
-{"realm_name",      'n',    "REALNAME", 0,      "Remote realm name.", 4},
-{"yuno_role",       'O',    "YUNOROLE", 0,      "Remote yuno role.", 4},
-{"yuno_name",       'o',    "YUNONAME", 0,      "Remote yuno name.", 4},
-{"service",         'S',    "SERVICE",  0,      "Remote yuno service (default '__default_service__', __agent__ or __agent_yuno__ for agent).", 4},
-{"gobj_name",       'g',    "GOBJNAME", 0,      "GObj (named-gobj or full-path).", 4},
 {0,                 0,      0,          0,      "Local keys.", 5},
 {"print",           'p',    0,          0,      "Print configuration.", 5},
 {"config-file",     'f',    "FILE",     0,      "load settings from json config file or [files]", 5},
@@ -177,24 +167,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
         arguments->url = arg;
         break;
 
-    case 'O':
-        arguments->yuno_role = arg;
-        break;
-    case 'o':
-        arguments->yuno_name = arg;
-        break;
-
-    case 'S':
-        arguments->yuno_service = arg;
-        break;
     case 'c':
         arguments->command = arg;
-        break;
-    case 'n':
-        arguments->realm_name = arg;
-        break;
-    case 'g':
-        arguments->gobj_name = arg;
         break;
 
     case 'v':
@@ -271,11 +245,6 @@ int main(int argc, char *argv[])
     memset(&arguments, 0, sizeof(arguments));
     arguments.url = "ws://127.0.0.1:1991";
     arguments.command = "";
-    arguments.realm_name = 0;
-    arguments.yuno_role = 0;
-    arguments.yuno_name = 0;
-    arguments.yuno_service = "__yuno__";
-    arguments.gobj_name = "__default_service__";
 
     /*
      *  Save args
@@ -312,25 +281,12 @@ int main(int argc, char *argv[])
         snprintf(param2, l, "--config-file=%s", arguments.config_json_file);
         argvs[idx++] = param2;
     } else {
-        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:s, s:s, s:s}}",
+        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
-            "YCommand.url", arguments.url,
-            "YCommand.yuno_service", arguments.yuno_service,
-            "YCommand.gobj_name", arguments.gobj_name
+            "YCommand.url", arguments.url
         );
-        json_t *jn_ycommand = kw_get_dict_value(kw_utility, "global", 0, 0);
-        if(arguments.realm_name) {
-            json_object_set_new(jn_ycommand, "YCommand.realm_name", json_string(arguments.realm_name));
-        }
-        if(arguments.yuno_role) {
-            json_object_set_new(jn_ycommand, "YCommand.yuno_role", json_string(arguments.yuno_role));
-        }
-        if(arguments.yuno_name) {
-            json_object_set_new(jn_ycommand, "YCommand.yuno_name", json_string(arguments.yuno_name));
-        }
-
         char *param1_ = json_dumps(kw_utility, JSON_COMPACT);
         if(!param1_) {
             printf("Some parameter is wrong\n");

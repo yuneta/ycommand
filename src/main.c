@@ -33,8 +33,6 @@ struct arguments
     int print;
     int print_version;
     int print_yuneta_version;
-    int use_config_file;
-    const char *config_json_file;
 };
 
 /***************************************************************************
@@ -135,7 +133,6 @@ static struct argp_option options[] = {
 {"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 4},
 {0,                 0,      0,          0,      "Local keys.", 5},
 {"print",           'p',    0,          0,      "Print configuration.", 5},
-{"config-file",     'f',    "FILE",     0,      "load settings from json config file or [files]", 5},
 {"print-role",      'r',    0,          0,      "print the basic yuno's information"},
 {"verbose",         'l',    "LEVEL",    0,      "Verbose level.", 5},
 {"version",         'v',    0,          0,      "Print version.", 3},
@@ -187,10 +184,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'r':
         arguments->print_role = 1;
-        break;
-    case 'f':
-        arguments->config_json_file = arg;
-        arguments->use_config_file = 1;
         break;
     case 'p':
         arguments->print = 1;
@@ -275,12 +268,7 @@ int main(int argc, char *argv[])
     /*
      *  Put configuration
      */
-    if(arguments.use_config_file) {
-        int l = strlen("--config-file=") + strlen(arguments.config_json_file) + 4;
-        char *param2 = malloc(l);
-        snprintf(param2, l, "--config-file=%s", arguments.config_json_file);
-        argvs[idx++] = param2;
-    } else {
+    {
         json_t *kw_utility = json_pack("{s:{s:b, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,

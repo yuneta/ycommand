@@ -46,7 +46,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state);
 #define APP_NAME        "ycommand"
 #define APP_DOC         "Yuneta Command"
 
-#define APP_VERSION     "4.2.27"
+#define APP_VERSION     "4.2.28"
 #define APP_DATETIME    __DATE__ " " __TIME__
 #define APP_SUPPORT     "<niyamaka at yuneta.io>"
 

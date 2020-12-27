@@ -60,8 +60,8 @@ PRIVATE char fixed_config[]= "\
         'domain_dir': 'realms/agent'                                \n\
     },                                                              \n\
     'yuno': {                                                       \n\
-        'yuno_role': 'ycommand',                                      \n\
-        'classifiers': ['yuneta', 'core']                           \n\
+        'yuno_role': 'ycommand',                                    \n\
+        'tags': ['yuneta', 'core']                                  \n\
     }                                                               \n\
 }                                                                   \n\
 ";

@@ -46,7 +46,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state);
 #define APP_NAME        "ycommand"
 #define APP_DOC         "Yuneta Command"
 
-#define APP_VERSION     "4.6.4"
+#define APP_VERSION     "4.6.5"
 #define APP_DATETIME    __DATE__ " " __TIME__
 #define APP_SUPPORT     "<niyamaka at yuneta.io>"
 
@@ -56,8 +56,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state);
 PRIVATE char fixed_config[]= "\
 {                                                                   \n\
     'environment': {                                                \n\
+        'realm_owner': 'agent',                                     \n\
         'work_dir': '/yuneta',                                      \n\
-        'domain_dir': 'realms/agent'                                \n\
+        'domain_dir': 'realms/agent/ycommand'                       \n\
     },                                                              \n\
     'yuno': {                                                       \n\
         'yuno_role': 'ycommand',                                    \n\

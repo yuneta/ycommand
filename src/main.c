@@ -27,12 +27,16 @@ struct arguments
 
     int print_role;
     char *url;
+    char *yuno_role;
+    char *yuno_name;
+    char *yuno_service;
     char *command;
 
     int verbose;                /* verbose */
     int print;
     int print_version;
     int print_yuneta_version;
+    int interactive;
 };
 
 /***************************************************************************
@@ -95,8 +99,8 @@ PRIVATE char variable_config[]= "\
     },                                                              \n\
     'services': [                                                   \n\
         {                                                           \n\
-            'name': 'ycommand',                                       \n\
-            'gclass': 'YCommand',                                     \n\
+            'name': 'ycommand',                                     \n\
+            'gclass': 'YCommand',                                   \n\
             'default_service': true,                                \n\
             'autostart': true,                                      \n\
             'autoplay': false,                                      \n\
@@ -129,9 +133,13 @@ static char args_doc[] = "";
 static struct argp_option options[] = {
 /*-name-------------key-----arg---------flags---doc-----------------group */
 {0,                 0,      0,          0,      "Remote Service keys", 1},
-{"command",         'c',    "COMMAND",  0,      "Command.", 2},
+{"command",         'c',    "COMMAND",  0,      "Command.", 1},
+{"interactive",     'i',    0,          0,      "Interactive.", 1},
 {0,                 0,      0,          0,      "Connection keys", 4},
 {"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 4},
+{"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 4},
+{"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 4},
+{"service",         'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 4},
 {0,                 0,      0,          0,      "Local keys.", 5},
 {"print",           'p',    0,          0,      "Print configuration.", 5},
 {"print-role",      'r',    0,          0,      "print the basic yuno's information"},
@@ -167,6 +175,20 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'c':
         arguments->command = arg;
+        break;
+    case 'i':
+        arguments->interactive = 1;
+        break;
+
+    case 'O':
+        arguments->yuno_role = arg;
+        break;
+    case 'o':
+        arguments->yuno_name = arg;
+        break;
+
+    case 'S':
+        arguments->yuno_service = arg;
         break;
 
     case 'v':
@@ -244,6 +266,9 @@ int main(int argc, char *argv[])
     memset(&arguments, 0, sizeof(arguments));
     arguments.url = "ws://127.0.0.1:1991";
     arguments.command = "";
+    arguments.yuno_role = "yuneta_agent";
+    arguments.yuno_name = "";
+    arguments.yuno_service = "__default_service__";
 
     /*
      *  Save args
@@ -275,11 +300,15 @@ int main(int argc, char *argv[])
      *  Put configuration
      */
     {
-        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:s}}",
+        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
-            "YCommand.url", arguments.url
+            "YCommand.interactive", arguments.interactive,
+            "YCommand.url", arguments.url,
+            "YCommand.yuno_role", arguments.yuno_role,
+            "YCommand.yuno_name", arguments.yuno_name,
+            "YCommand.yuno_service", arguments.yuno_service
         );
         char *param1_ = json_dumps(kw_utility, JSON_COMPACT);
         if(!param1_) {

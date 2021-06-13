@@ -9,11 +9,59 @@
  ***********************************************************************/
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <ncurses/ncurses.h>
 #include "c_ycommand.h"
 
 /***************************************************************************
  *              Constants
  ***************************************************************************/
+enum {
+    CTRL_A = 1,
+    CTRL_B = 2,
+    CTRL_D = 4,
+    CTRL_E = 5,
+    CTRL_F = 6,
+    CTRL_H = 8,
+    BACKSPACE =  127,
+    BACKSPACE2 = 0177,
+    TAB = 9,
+    CTRL_K = 11,
+    ENTER = 10,
+    CTRL_N = 14,
+    CTRL_P = 16,
+    CTRL_T = 20,
+    CTRL_U = 21,
+    CTRL_W = 23,
+    CTRL_Y = 25,
+
+    CTRL_START = 01027,
+    CTRL_PPAGE = 01053,
+    CTRL_NPAGE = 01046,
+    CTRL_END = 01022,
+
+    CTRL_START2 = 01031,
+    CTRL_PPAGE2 = 01055,
+    CTRL_NPAGE2 = 01050,
+    CTRL_END2 = 01024,
+
+    ALT_LEFT = 01037,
+    ALT_RIGHT = 01056,
+
+    ALT_LEFT2 = 01041,
+    ALT_RIGHT2 = 01060,
+
+    CTRL_LEFT = 01043,
+    CTRL_RIGHT = 01062,
+    CTRL_UP = 01070,
+    CTRL_DOWN = 01017,
+
+    CTRL_LEFT2 = 0611,
+    CTRL_RIGHT2 = 0622,
+    CTRL_UP2 = 0521,
+    CTRL_DOWN2 = 0520,
+
+};
 
 /***************************************************************************
  *              Structures
@@ -22,6 +70,7 @@
 /***************************************************************************
  *              Prototypes
  ***************************************************************************/
+PRIVATE void on_poll_cb(uv_poll_t *req, int status, int events);
 PRIVATE int cmd_connect(hgobj gobj);
 PRIVATE int do_command(hgobj gobj, const char *command);
 
@@ -35,6 +84,7 @@ PRIVATE int do_command(hgobj gobj, const char *command);
 PRIVATE sdata_desc_t tattr_desc[] = {
 /*-ATTR-type------------name----------------flag--------default---------description---------- */
 SDATA (ASN_BOOLEAN,     "verbose",          0,          1,              "Verbose mode."),
+SDATA (ASN_BOOLEAN,     "interactive",      0,          0,              "Interactive."),
 SDATA (ASN_OCTET_STR,   "command",          0,          "",             "Command."),
 SDATA (ASN_OCTET_STR,   "url",              0,          "ws://127.0.0.1:1991",  "Url to get Statistics. Can be a ip/hostname or a full url"),
 SDATA (ASN_OCTET_STR,   "yuno_name",        0,          "",             "Yuno name"),
@@ -63,7 +113,10 @@ PRIVATE const trace_level_t s_user_trace_level[16] = {
  *---------------------------------------------*/
 typedef struct _PRIVATE_DATA {
     int32_t verbose;
-
+    int32_t interactive;
+    char bf[4*1024];
+    int idx;
+    uv_poll_t uv_poll;
     hgobj gobj_connector;
 } PRIVATE_DATA;
 
@@ -90,6 +143,7 @@ PRIVATE void mt_create(hgobj gobj)
      */
     SET_PRIV(gobj_connector,        gobj_read_pointer_attr)
     SET_PRIV(verbose,               gobj_read_bool_attr)
+    SET_PRIV(interactive,           gobj_read_bool_attr)
 }
 
 /***************************************************************************
@@ -100,7 +154,6 @@ PRIVATE void mt_writing(hgobj gobj, const char *path)
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
     IF_EQ_SET_PRIV(gobj_connector,     gobj_read_pointer_attr)
-    ELIF_EQ_SET_PRIV(verbose,           gobj_read_bool_attr)
     END_EQ_SET_PRIV()
 }
 
@@ -116,6 +169,15 @@ PRIVATE void mt_destroy(hgobj gobj)
  ***************************************************************************/
 PRIVATE int mt_start(hgobj gobj)
 {
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    uv_loop_t *loop = yuno_uv_event_loop();
+
+    uv_poll_init(loop, &priv->uv_poll, STDIN_FILENO);
+    priv->uv_poll.data = gobj;
+
+    uv_poll_start(&priv->uv_poll, UV_READABLE, on_poll_cb);
+
     cmd_connect(gobj);
     return 0;
 }
@@ -125,6 +187,12 @@ PRIVATE int mt_start(hgobj gobj)
  ***************************************************************************/
 PRIVATE int mt_stop(hgobj gobj)
 {
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    uv_poll_stop(&priv->uv_poll);
+    uv_close((uv_handle_t *)&priv->uv_poll, 0);
+    gobj_stop_tree(gobj);
+
     return 0;
 }
 
@@ -279,12 +347,60 @@ PRIVATE int cmd_connect(hgobj gobj)
 
     gobj_start_tree(gobj_remote_agent);
 
-    if(priv->verbose) {
+    if(priv->verbose || priv->interactive) {
         printf("Connecting to %s...\n", url);
     }
     return 0;
 }
 
+/***************************************************************************
+ *  on poll callback
+ ***************************************************************************/
+PRIVATE void on_poll_cb(uv_poll_t *req, int status, int events)
+{
+    hgobj gobj = req->data;
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    if(status < 0) {
+        log_error(0,
+            "gobj",         "%s", gobj_full_name(gobj),
+            "function",     "%s", __FUNCTION__,
+            "msgset",       "%s", MSGSET_LIBUV_ERROR,
+            "msg",          "%s", "read FAILED",
+            "uv_error",     "%s", uv_err_name(status),
+            NULL
+        );
+        //toclose(gobj, TRUE);
+        return;
+    }
+    if (events & UV_READABLE) {
+        int kb = 0;
+        if(read(STDIN_FILENO, &kb, 1)==1) {
+            if(kb == ENTER || kb == KEY_ENTER) {
+                if(!empty_string(priv->bf)) {
+                    if(strcasecmp(priv->bf, "exit")==0 || strcasecmp(priv->bf, "quit")==0) {
+                        gobj_stop(gobj);
+                    } else {
+                        do_command(gobj, priv->bf);
+                    }
+                } else {
+                    printf("ycommand> ");
+                    fflush(stdout);
+                }
+                priv->idx = 0;
+                priv->bf[priv->idx] = 0;
+
+            } else {
+                if(kb >= 0x20 && kb <= 0x7f) {
+                    if(priv->idx < sizeof(priv->bf)-1) {
+                        priv->bf[priv->idx++] = kb;
+                        priv->bf[priv->idx] = 0;
+                    }
+                }
+            }
+        }
+    }
+}
 
 /***************************************************************************
  *
@@ -314,19 +430,33 @@ PRIVATE int do_command(hgobj gobj, const char *command)
 PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
-    const char *agent_name = kw_get_str(kw, "remote_yuno_name", 0, 0); // remote agent name
+    const char *yuno_role = kw_get_str(kw, "remote_yuno_role", "", 0);
+    const char *yuno_name = kw_get_str(kw, "remote_yuno_name", "", 0);
 
-    if(priv->verbose) {
-        printf("Connected to '%s', url: '%s'.\n", agent_name, gobj_read_str_attr(gobj, "url"));
+    if(priv->verbose || priv->interactive) {
+        printf("Connected to '%s^%s', url:'%s'.\n",
+            yuno_role,
+            yuno_name,
+            gobj_read_str_attr(gobj, "url")
+        );
     }
     gobj_write_pointer_attr(gobj, "gobj_connector", src);
 
     const char *command = gobj_read_str_attr(gobj, "command");
-    if(empty_string(command)) {
-        printf("What command?\n");
-        gobj_set_exit_code(-1);
-        gobj_shutdown();
+    if(gobj_read_bool_attr(gobj, "interactive")) {
+        if(!empty_string(command)) {
+            do_command(gobj, command);
+        } else {
+            printf("Type 'quit' or 'exit' to exit\n");
+            printf("ycommand> ");
+            fflush(stdout);
+        }
     } else {
+        if(empty_string(command)) {
+            printf("What command?\n");
+            gobj_set_exit_code(-1);
+            gobj_shutdown();
+        }
         do_command(gobj, command);
     }
 
@@ -342,11 +472,11 @@ PRIVATE int ac_on_close(hgobj gobj, const char *event, json_t *kw, hgobj src)
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
     gobj_write_pointer_attr(gobj, "gobj_connector", 0);
-    if(!gobj_is_running(gobj)) {
-        KW_DECREF(kw);
-        return 0;
-    }
-    if(priv->verbose) {
+//     if(!gobj_is_running(gobj)) {
+//         KW_DECREF(kw);
+//         return 0;
+//     }
+    if(priv->verbose || priv->interactive) {
         printf("Disconnected.\n");
     }
 
@@ -376,8 +506,14 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         }
     }
     KW_DECREF(kw);
-    gobj_set_exit_code(result);
-    gobj_shutdown();
+
+    if(gobj_read_bool_attr(gobj, "interactive")) {
+        printf("ycommand> ");
+        fflush(stdout);
+    } else {
+        gobj_set_exit_code(result);
+        gobj_shutdown();
+    }
     return 0;
 }
 

@@ -315,26 +315,6 @@ PRIVATE void mt_destroy(hgobj gobj)
     freeHistory(priv);
 }
 
-/***************************************************************************
- *      Framework Method play
- ***************************************************************************/
-PRIVATE int mt_play(hgobj gobj)
-{
-    gobj_change_state(gobj, "ST_IDLE");
-    // TODO re PAINT in enabled colors
-    return 0;
-}
-
-/***************************************************************************
- *      Framework Method pause
- ***************************************************************************/
-PRIVATE int mt_pause(hgobj gobj)
-{
-    gobj_change_state(gobj, "ST_DISABLED");
-    // TODO re PAINT in disabled colors
-    return 0;
-}
-
 
 
 
@@ -1261,7 +1241,6 @@ PRIVATE const EVENT output_events[] = {
 };
 PRIVATE const char *state_names[] = {
     "ST_IDLE",
-    "ST_DISABLED",
     NULL
 };
 
@@ -1294,13 +1273,8 @@ PRIVATE EV_ACTION ST_IDLE[] = {
     {0,0,0}
 };
 
-PRIVATE EV_ACTION ST_DISABLED[] = {
-    {0,0,0}
-};
-
 PRIVATE EV_ACTION *states[] = {
     ST_IDLE,
-    ST_DISABLED,
     NULL
 };
 
@@ -1334,8 +1308,8 @@ PRIVATE GCLASS _gclass = {
         mt_destroy,
         mt_start,
         mt_stop,
-        mt_play,
-        mt_pause,
+        0, //mt_play,
+        0, //mt_pause,
         mt_writing,
         0, //mt_reading,
         0, //mt_subscription_added,

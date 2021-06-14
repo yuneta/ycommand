@@ -358,6 +358,7 @@ int main(int argc, char *argv[])
         gobj_set_gobj_trace(0, "subscriptions", TRUE, 0);
         gobj_set_gobj_trace(0, "create_delete", TRUE, 0);
         gobj_set_gobj_trace(0, "start_stop", TRUE, 0);
+        gobj_set_gobj_trace(0, "libuv", TRUE, 0);
     }
     gobj_set_gclass_no_trace(GCLASS_TIMER, "machine", TRUE);
 

@@ -120,6 +120,8 @@ SDATA (ASN_OCTET_STR,   "yuno_name",        0,          "",             "Yuno na
 SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno role"),
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
 SDATA (ASN_POINTER,     "gobj_connector",   0,          0,              "connection gobj"),
+SDATA (ASN_OCTET_STR,   "display_mode",     SDF_WR|SDF_PERSIST,"table", "Display mode: table or form"),
+SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"vim",   "Editor"),
 SDATA (ASN_POINTER,     "user_data",        0,          0,              "user data"),
 SDATA (ASN_POINTER,     "user_data2",       0,          0,              "more user data"),
 SDATA_END()
@@ -466,6 +468,10 @@ PRIVATE int process_key(hgobj gobj, int kb)
         return 0;
     }
 
+    if(kb == 3) {
+        gobj_stop(gobj);
+        return 0;
+    }
     if(kb >= 0x20 && kb <= 0x7f) {
         json_t *kw_char = json_pack("{s:i}",
             "char", kb
@@ -540,7 +546,7 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         return;
     }
 
-    if(priv->verbose) {
+    if(gobj_trace_level(gobj) & TRACE_UV) {
         log_debug_dump(
             0,
             buf->base,
@@ -609,6 +615,271 @@ PRIVATE int do_command(hgobj gobj, const char *command)
     return 0;
 }
 
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE GBUFFER *source2base64(const char *source, char **comment)
+{
+    /*------------------------------------------------*
+     *          Check source
+     *  Frequently, You want install install the output
+     *  of your yuno's make install command.
+     *------------------------------------------------*/
+    if(empty_string(source)) {
+        *comment = "source not found";
+        return 0;
+    }
+
+    char path[NAME_MAX];
+    if(access(source, 0)==0 && is_regular_file(source)) {
+        snprintf(path, sizeof(path), "%s", source);
+    } else {
+        snprintf(path, sizeof(path), "/yuneta/development/output/yunos/%s", source);
+    }
+
+    if(access(path, 0)!=0) {
+        *comment = "source not found";
+        return 0;
+    }
+    if(!is_regular_file(path)) {
+        *comment = "source is not a regular file";
+        return 0;
+    }
+    GBUFFER *gbuf_b64 = gbuf_file2base64(path);
+    if(!gbuf_b64) {
+        *comment = "conversion to base64 failed";
+    }
+    return gbuf_b64;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE GBUFFER * replace_cli_vars(hgobj gobj, const char *command, char **comment)
+{
+    GBUFFER *gbuf = gbuf_create(4*1024, gbmem_get_maximum_block(), 0, 0);
+    char *command_ = gbmem_strdup(command);
+    char *p = command_;
+    char *n, *f;
+    while((n=strstr(p, "$$"))) {
+        *n = 0;
+        gbuf_append(gbuf, p, strlen(p));
+
+        n += 2;
+        if(*n == '(') {
+            f = strchr(n, ')');
+        } else {
+            gbuf_decref(gbuf);
+            gbmem_free(command_);
+            *comment = "Bad format of $$: use $$(..)";
+            return 0;
+        }
+        if(!f) {
+            gbuf_decref(gbuf);
+            gbmem_free(command_);
+            *comment = "Bad format of $$: use $$(...)";
+            return 0;
+        }
+        *n = 0;
+        n++;
+        *f = 0;
+        f++;
+
+        GBUFFER *gbuf_b64 = source2base64(n, comment);
+        if(!gbuf_b64) {
+            gbuf_decref(gbuf);
+            gbmem_free(command_);
+            return 0;
+        }
+
+        gbuf_append(gbuf, "'", 1);
+        gbuf_append_gbuf(gbuf, gbuf_b64);
+        gbuf_append(gbuf, "'", 1);
+        gbuf_decref(gbuf_b64);
+
+        p = f;
+    }
+    if(!empty_string(p)) {
+        gbuf_append(gbuf, p, strlen(p));
+    }
+
+    gbmem_free(command_);
+    return gbuf;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE GBUFFER *jsontable2str(json_t *jn_schema, json_t *jn_data)
+{
+    GBUFFER *gbuf = gbuf_create(4*1024, gbmem_get_maximum_block(), 0, 0);
+
+    size_t col;
+    json_t *jn_col;
+    /*
+     *  Paint Headers
+     */
+    json_array_foreach(jn_schema, col, jn_col) {
+        const char *header = kw_get_str(jn_col, "header", "", 0);
+        int fillspace = kw_get_int(jn_col, "fillspace", 10, 0);
+        if(fillspace && fillspace < strlen(header)) {
+            fillspace = strlen(header);
+        }
+        if(fillspace > 0) {
+            gbuf_printf(gbuf, "%-*.*s ", fillspace, fillspace, header);
+        }
+    }
+    gbuf_printf(gbuf, "\n");
+
+    /*
+     *  Paint ===
+     */
+    json_array_foreach(jn_schema, col, jn_col) {
+        const char *header = kw_get_str(jn_col, "header", "", 0);
+        int fillspace = kw_get_int(jn_col, "fillspace", 10, 0);
+        if(fillspace && fillspace < strlen(header)) {
+            fillspace = strlen(header);
+        }
+        if(fillspace > 0) {
+            gbuf_printf(gbuf,
+                "%*.*s ",
+                fillspace,
+                fillspace,
+                "==========================================================================="
+            );
+        }
+    }
+    gbuf_printf(gbuf, "\n");
+
+    /*
+     *  Paint data
+     */
+    size_t row;
+    json_t *jn_row;
+    json_array_foreach(jn_data, row, jn_row) {
+        json_array_foreach(jn_schema, col, jn_col) {
+            const char *id = kw_get_str(jn_col, "id", 0, 0);
+            int fillspace = kw_get_int(jn_col, "fillspace", 10, 0);
+            const char *header = kw_get_str(jn_col, "header", "", 0);
+            if(fillspace && fillspace < strlen(header)) {
+                fillspace = strlen(header);
+            }
+            if(fillspace > 0) {
+                json_t *jn_cell = kw_get_dict_value(jn_row, id, 0, 0);
+                char *text = json2uglystr(jn_cell);
+                if(json_is_number(jn_cell) || json_is_boolean(jn_cell)) {
+                    //gbuf_printf(gbuf, "%*s ", fillspace, text);
+                    gbuf_printf(gbuf, "%-*.*s ", fillspace, fillspace, text);
+                } else {
+                    gbuf_printf(gbuf, "%-*.*s ", fillspace, fillspace, text);
+                }
+                GBMEM_FREE(text);
+            }
+        }
+        gbuf_printf(gbuf, "\n");
+    }
+    gbuf_printf(gbuf, "\nTotal: %d\n", row);
+
+    return gbuf;
+}
+
+/***************************************************************************
+ *  Print json response in display list window
+ ***************************************************************************/
+PRIVATE int display_webix_result(
+    hgobj gobj,
+    json_t *webix)
+{
+//     PRIVATE_DATA *priv = gobj_priv_data(gobj);
+    int result = kw_get_int(webix, "result", -1, 0);
+    const char *comment = kw_get_str(webix, "comment", "", 0);
+    json_t *jn_schema = kw_get_dict_value(webix, "schema", 0, 0);
+    json_t *jn_data = kw_get_dict_value(webix, "data", 0, 0);
+
+    const char *display_mode = gobj_read_str_attr(gobj, "display_mode");
+    json_t *jn_display_mode = kw_get_subdict_value(webix, "__md_iev__", "display_mode", 0, 0);
+    if(jn_display_mode) {
+        display_mode = json_string_value(jn_display_mode);
+    }
+    BOOL mode_form = FALSE;
+    if(!empty_string(display_mode)) {
+        if(strcasecmp(display_mode, "form")==0)  {
+            mode_form = TRUE;
+        }
+    }
+
+    if(result < 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+//         if(priv->file_saving_output) {
+//             fprintf(priv->file_saving_output, "ERROR %d: %s\n", result, comment);
+//         }
+    } else {
+        if(!empty_string(comment)) {
+            printf("%s\n", comment);
+//             if(priv->file_saving_output) {
+//                 fprintf(priv->file_saving_output, "%s\n", comment);
+//             }
+        }
+    }
+
+    if(json_is_array(jn_data)) {
+        if (mode_form) {
+            { // XXX if(json_array_size(jn_data)>0) {
+                char *data = json2str(jn_data);
+                printf("%s\n", data);
+//                 if(priv->file_saving_output) {
+//                     fprintf(priv->file_saving_output, "%s\n", data);
+//                 }
+                gbmem_free(data);
+            }
+        } else {
+            /*
+             *  display as table
+             */
+            if(jn_schema && json_array_size(jn_schema)) {
+                GBUFFER *gbuf = jsontable2str(jn_schema, jn_data);
+                if(gbuf) {
+                    char *p = gbuf_cur_rd_pointer(gbuf);
+                    printf("%s\n", p);
+//                     if(priv->file_saving_output) {
+//                         fprintf(priv->file_saving_output, "%s\n", p);
+//                     }
+                    gbuf_decref(gbuf);
+                }
+            } else {
+                { // XXX Display [] if empty array if(json_array_size(jn_data)>0) {
+                    char *text = json2str(jn_data);
+                    if(text) {
+                        printf("%s\n", text);
+//                         if(priv->file_saving_output) {
+//                             fprintf(priv->file_saving_output, "%s\n", text);
+//                         }
+                        gbmem_free(text);
+                    }
+                }
+            }
+        }
+    } else if(json_is_object(jn_data)) {
+        char *data = json2str(jn_data);
+        printf("%s\n", data);
+//         if(priv->file_saving_output) {
+//             fprintf(priv->file_saving_output, "%s\n", data);
+//         }
+        gbmem_free(data);
+    }
+
+//     if(priv->file_saving_output) {
+//         fflush(priv->file_saving_output);
+//     }
+
+//     SetFocus(priv->gobj_editline);
+
+    printf("\nycommand> "); fflush(stdout);
+
+    JSON_DECREF(webix);
+    return 0;
+}
+
 
 
 
@@ -643,8 +914,7 @@ PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
             do_command(gobj, command);
         } else {
             printf("Type 'quit' or 'exit' to exit\n");
-            printf("ycommand> ");
-            fflush(stdout);
+            printf("ycommand> "); fflush(stdout);
         }
     } else {
         if(empty_string(command)) {
@@ -683,14 +953,80 @@ PRIVATE int ac_on_close(hgobj gobj, const char *event, json_t *kw, hgobj src)
 }
 
 /***************************************************************************
- *  Command received.
+ *  HACK Este evento solo puede venir de GCLASS_EDITLINE
  ***************************************************************************/
 PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    json_t *kw_input_command = json_object();
+    gobj_send_event(src, "EV_GETTEXT", kw_input_command, gobj); // EV_GETTEXT is EVF_KW_WRITING
+    const char *command = kw_get_str(kw_input_command, "text", 0, 0);
+
+    if(empty_string(command)) {
+        printf("\nycommand> "); fflush(stdout);
+        KW_DECREF(kw_input_command);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    printf("%s\n", command);
+
+    char *comment;
+    GBUFFER *gbuf_parsed_command = replace_cli_vars(gobj, command, &comment);
+    if(!gbuf_parsed_command) {
+        printf("%s%s%s\n", On_Red BWhite, command, Color_Off);
+        printf("\nycommand> "); fflush(stdout);
+        KW_DECREF(kw_input_command);
+        KW_DECREF(kw);
+        return 0;
+    }
+    char *xcmd = gbuf_cur_rd_pointer(gbuf_parsed_command);
+    json_t *kw_command = json_object();
+    if(*xcmd == '*') {
+        xcmd++;
+        kw_set_subdict_value(kw_command, "__md_iev__", "display_mode", json_string("form"));
+    }
+    json_t *webix = 0;
+    if(priv->gobj_connector) {
+        webix = gobj_command(priv->gobj_connector, xcmd, kw_command, gobj);
+    } else {
+        printf("%s%s%s\n", On_Red BWhite, "No connection", Color_Off);
+    }
+    gbuf_decref(gbuf_parsed_command);
+
+    /*
+     *  Print json response in display window
+     */
+    if(webix) {
+        display_webix_result(
+            gobj,
+            webix
+        );
+    } else {
+        /* asychronous responses return 0 */
+        printf("Waiting response..."); fflush(stdout);
+    }
+
+    /*
+     *  Clear input line
+     */
+    json_object_set_new(kw_input_command, "text", json_string(""));
+    gobj_send_event(src, "EV_SETTEXT", kw_input_command, gobj);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *  Command received.
+ ***************************************************************************/
+PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
     int result = WEBIX_RESULT(kw);
     const char *comment = WEBIX_COMMENT(kw);
     if(result != 0){
-        printf("%sERROR %d: '%s'%s\n", On_Red BWhite, result, comment, Color_Off);
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
     } else {
         if(!empty_string(comment)) {
             printf("%s\n", comment);
@@ -703,8 +1039,7 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
     KW_DECREF(kw);
 
     if(gobj_read_bool_attr(gobj, "interactive")) {
-        printf("ycommand> ");
-        fflush(stdout);
+        printf("\nycommand> "); fflush(stdout);
     } else {
         gobj_set_exit_code(result);
         gobj_shutdown();
@@ -726,6 +1061,7 @@ PRIVATE int ac_timeout(hgobj gobj, const char *event, json_t *kw, hgobj src)
  ***************************************************************************/
 PRIVATE const EVENT input_events[] = {
     // top input
+    {"EV_COMMAND",          0, 0, 0},
     {"EV_MT_COMMAND_ANSWER",EVF_PUBLIC_EVENT,  0,  0},
     {"EV_ON_OPEN",          0,  0,  0},
     {"EV_ON_CLOSE",         0,  0,  0},
@@ -751,7 +1087,8 @@ PRIVATE EV_ACTION ST_DISCONNECTED[] = {
     {0,0,0}
 };
 PRIVATE EV_ACTION ST_CONNECTED[] = {
-    {"EV_MT_COMMAND_ANSWER",        ac_command,                   0},
+    {"EV_COMMAND",                  ac_command,                 0},
+    {"EV_MT_COMMAND_ANSWER",        ac_command_answer,          0},
     {"EV_ON_CLOSE",                 ac_on_close,                "ST_DISCONNECTED"},
     {"EV_TIMEOUT",                  ac_timeout,                 0},
     {"EV_STOPPED",                  0,                          0},

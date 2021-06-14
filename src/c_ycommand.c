@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <ncurses/ncurses.h>
 #include "c_ycommand.h"
 
 /***************************************************************************
@@ -19,48 +18,37 @@
 enum {
     CTRL_A = 1,
     CTRL_B = 2,
+    CTRL_C = 3,
     CTRL_D = 4,
     CTRL_E = 5,
     CTRL_F = 6,
     CTRL_H = 8,
     BACKSPACE =  127,
-    BACKSPACE2 = 0177,
     TAB = 9,
     CTRL_K = 11,
-    ENTER = 10,
+    ENTER = 13,
     CTRL_N = 14,
     CTRL_P = 16,
     CTRL_T = 20,
     CTRL_U = 21,
     CTRL_W = 23,
     CTRL_Y = 25,
+    ESCAPE = 27,
 
-    CTRL_START = 01027,
-    CTRL_PPAGE = 01053,
-    CTRL_NPAGE = 01046,
-    CTRL_END = 01022,
-
-    CTRL_START2 = 01031,
-    CTRL_PPAGE2 = 01055,
-    CTRL_NPAGE2 = 01050,
-    CTRL_END2 = 01024,
-
-    ALT_LEFT = 01037,
-    ALT_RIGHT = 01056,
-
-    ALT_LEFT2 = 01041,
-    ALT_RIGHT2 = 01060,
-
-    CTRL_LEFT = 01043,
-    CTRL_RIGHT = 01062,
-    CTRL_UP = 01070,
-    CTRL_DOWN = 01017,
-
-    CTRL_LEFT2 = 0611,
-    CTRL_RIGHT2 = 0622,
-    CTRL_UP2 = 0521,
-    CTRL_DOWN2 = 0520,
-
+    KEY_START =         0x1B5B48,       // .[H
+    KEY_PREV_PAGE =     0x1B5B357E,     // .[5~
+    KEY_NEXT_PAGE =     0x1B5B367E,     // .[6~
+    KEY_END =           0x1B5B46,       // .[F
+    KEY_UP =            0x1B5B41,       // .[A
+    KEY_DOWN =          0x1B5B42,       // .[B
+    KEY_LEFT =          0x1B5B44,       // .[D
+    KEY_RIGHT =         0x1B5B43,       // .[C
+    KEY_INS =           0x1B5B327E,     // .[2~
+    KEY_DEL =           0x1B5B337E,     // .[3~
+    KEY_ALT_START =     0x1B5B313B3348, // .[1;3H
+    KEY_ALT_PREV_PAGE = 0x1B5B353B337E, // .[5;3~
+    KEY_ALT_NEXT_PAGE = 0x1B5B363B337E, // .[6;3~
+    KEY_ALT_END =       0x1B5B313B3346, // .[1;3F
 };
 
 /***************************************************************************
@@ -70,13 +58,54 @@ enum {
 /***************************************************************************
  *              Prototypes
  ***************************************************************************/
-PRIVATE void on_poll_cb(uv_poll_t *req, int status, int events);
+PRIVATE void on_alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+PRIVATE void on_close_cb(uv_handle_t* handle);
+PRIVATE void do_close(hgobj gobj);
 PRIVATE int cmd_connect(hgobj gobj);
 PRIVATE int do_command(hgobj gobj, const char *command);
 
 /***************************************************************************
  *          Data: config, public data, private data
  ***************************************************************************/
+struct {
+    const char *event;
+    unsigned long long key;
+} keytable[] = {
+{"EV_EDITLINE_MOVE_START",       CTRL_A},
+{"EV_EDITLINE_MOVE_START",       KEY_START},
+{"EV_EDITLINE_MOVE_END",         CTRL_E},
+{"EV_EDITLINE_MOVE_END",         KEY_END},
+{"EV_EDITLINE_MOVE_LEFT",        CTRL_B},
+{"EV_EDITLINE_MOVE_LEFT",        KEY_LEFT},
+{"EV_EDITLINE_MOVE_RIGHT",       CTRL_F},
+{"EV_EDITLINE_MOVE_RIGHT",       KEY_RIGHT},
+{"EV_EDITLINE_DEL_CHAR",         CTRL_D},
+{"EV_EDITLINE_DEL_CHAR",         KEY_DEL},
+{"EV_EDITLINE_BACKSPACE",        CTRL_H},
+{"EV_EDITLINE_BACKSPACE",        BACKSPACE},
+{"EV_EDITLINE_COMPLETE_LINE",    TAB},
+{"EV_EDITLINE_ENTER",            ENTER},
+{"EV_EDITLINE_PREV_HIST",        KEY_UP},
+{"EV_EDITLINE_NEXT_HIST",        KEY_DOWN},
+{"EV_EDITLINE_SWAP_CHAR",        CTRL_T},
+{"EV_EDITLINE_DEL_LINE",         CTRL_U},
+{"EV_EDITLINE_DEL_LINE",         CTRL_Y},
+{"EV_EDITLINE_DEL_PREV_WORD",    CTRL_W},
+
+{"EV_CLRSCR",                    CTRL_K},
+
+{"EV_SCROLL_PAGE_UP",            KEY_PREV_PAGE},
+{"EV_SCROLL_PAGE_DOWN",          KEY_NEXT_PAGE},
+
+{"EV_SCROLL_LINE_UP",            KEY_ALT_PREV_PAGE},
+{"EV_SCROLL_LINE_DOWN",          KEY_ALT_NEXT_PAGE},
+{"EV_SCROLL_TOP",                KEY_ALT_START},
+{"EV_SCROLL_BOTTOM",             KEY_ALT_END},
+
+{0}
+};
+
 
 /*---------------------------------------------*
  *      Attributes - order affect to oid's
@@ -100,10 +129,10 @@ SDATA_END()
  *      GClass trace levels
  *---------------------------------------------*/
 enum {
-    TRACE_USER = 0x0001,
+    TRACE_MESSAGES = 0x0001,
 };
 PRIVATE const trace_level_t s_user_trace_level[16] = {
-{"trace_user",        "Trace user description"},
+{"messages",        "Trace messages"},
 {0, 0},
 };
 
@@ -114,10 +143,13 @@ PRIVATE const trace_level_t s_user_trace_level[16] = {
 typedef struct _PRIVATE_DATA {
     int32_t verbose;
     int32_t interactive;
-    char bf[4*1024];
-    int idx;
-    uv_poll_t uv_poll;
+    uv_tty_t uv_tty;
+    char uv_handler_active;
+    char uv_read_active;
+    char uv_req_shutdown_active;
     hgobj gobj_connector;
+    hgobj gobj_editline;
+    grow_buffer_t bfinput;
 } PRIVATE_DATA;
 
 
@@ -136,6 +168,8 @@ typedef struct _PRIVATE_DATA {
 PRIVATE void mt_create(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    priv->gobj_editline = gobj_create("", GCLASS_EDITLINE, 0, gobj);
 
     /*
      *  Do copy of heavy used parameters, for quick access.
@@ -162,6 +196,40 @@ PRIVATE void mt_writing(hgobj gobj, const char *path)
  ***************************************************************************/
 PRIVATE void mt_destroy(hgobj gobj)
 {
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    if(priv->uv_handler_active) {
+        log_error(LOG_OPT_TRACE_STACK,
+            "gobj",         "%s", gobj_full_name(gobj),
+            "function",     "%s", __FUNCTION__,
+            "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
+            "msg",          "%s", "GObj NOT STOPPED. UV handler ACTIVE!",
+            NULL
+        );
+    }
+    if(priv->uv_read_active) {
+        log_error(0,
+            "gobj",         "%s", gobj_full_name(gobj),
+            "function",     "%s", __FUNCTION__,
+            "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
+            "msg",          "%s", "UV req_read ACTIVE",
+            NULL
+        );
+    }
+    if(priv->uv_req_shutdown_active) {
+        log_error(0,
+            "gobj",         "%s", gobj_full_name(gobj),
+            "function",     "%s", __FUNCTION__,
+            "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
+            "msg",          "%s", "UV req_shutdown ACTIVE",
+            NULL
+        );
+    }
+
+    /*
+     *  Free data
+     */
+    growbf_reset(&priv->bfinput);
 }
 
 /***************************************************************************
@@ -171,12 +239,30 @@ PRIVATE int mt_start(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
-    uv_loop_t *loop = yuno_uv_event_loop();
+    if(priv->uv_handler_active) {
+        log_error(0,
+            "gobj",         "%s", gobj_full_name(gobj),
+            "function",     "%s", __FUNCTION__,
+            "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
+            "msg",          "%s", "UV handler ALREADY ACTIVE!",
+            NULL
+        );
+        return -1;
+    }
 
-    uv_poll_init(loop, &priv->uv_poll, STDIN_FILENO);
-    priv->uv_poll.data = gobj;
+    if(gobj_trace_level(gobj) & TRACE_UV) {
+        trace_msg(">>> uv_init tty p=%p", &priv->uv_tty);
+    }
+    uv_tty_init(yuno_uv_event_loop(), &priv->uv_tty, STDIN_FILENO, 0);
+    priv->uv_tty.data = gobj;
+    priv->uv_handler_active = 1;
 
-    uv_poll_start(&priv->uv_poll, UV_READABLE, on_poll_cb);
+    uv_tty_set_mode(&priv->uv_tty, UV_TTY_MODE_RAW);
+
+    priv->uv_read_active = 1;
+    uv_read_start((uv_stream_t*)&priv->uv_tty, on_alloc_cb, on_read_cb);
+
+    gobj_start(priv->gobj_editline);
 
     cmd_connect(gobj);
     return 0;
@@ -188,9 +274,10 @@ PRIVATE int mt_start(hgobj gobj)
 PRIVATE int mt_stop(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
+    uv_tty_set_mode(&priv->uv_tty, UV_TTY_MODE_NORMAL);
+    uv_tty_reset_mode();
 
-    uv_poll_stop(&priv->uv_poll);
-    uv_close((uv_handle_t *)&priv->uv_poll, 0);
+    do_close(gobj);
     gobj_stop_tree(gobj);
 
     return 0;
@@ -354,52 +441,160 @@ PRIVATE int cmd_connect(hgobj gobj)
 }
 
 /***************************************************************************
- *  on poll callback
+ *
  ***************************************************************************/
-PRIVATE void on_poll_cb(uv_poll_t *req, int status, int events)
+PRIVATE const char *event_by_key(int kb)
 {
-    hgobj gobj = req->data;
+    for(int i=0; keytable[i].event!=0; i++) {
+        if(kb == keytable[i].key) {
+            return keytable[i].event;
+        }
+    }
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int process_key(hgobj gobj, int kb)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+    const char *event = event_by_key(kb);
+
+    if(!empty_string(event)) {
+        gobj_send_event(priv->gobj_editline, event, 0, gobj);
+        return 0;
+    }
+
+    if(kb >= 0x20 && kb <= 0x7f) {
+        json_t *kw_char = json_pack("{s:i}",
+            "char", kb
+        );
+        gobj_send_event(priv->gobj_editline, "EV_KEYCHAR", kw_char, gobj);
+    }
+
+    return 0;
+}
+
+/***************************************************************************
+ *  on alloc callback
+ ***************************************************************************/
+PRIVATE void on_alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
+{
+    hgobj gobj = handle->data;
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
-    if(status < 0) {
+    growbf_ensure_size(&priv->bfinput, suggested_size);
+    buf->base = priv->bfinput.bf;
+    buf->len = priv->bfinput.allocated;
+}
+
+/***************************************************************************
+ *  on read callback
+ ***************************************************************************/
+PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
+{
+    hgobj gobj = stream->data;
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    if(gobj_trace_level(gobj) & TRACE_UV) {
+        trace_msg("<<< on_read_cb %d tcp p=%p",
+            nread,
+            &priv->uv_tty
+        );
+    }
+
+    if(nread < 0) {
+        if(nread == UV_ECONNRESET) {
+            log_info(0,
+                "gobj",         "%s", gobj_full_name(gobj),
+                "msgset",       "%s", MSGSET_CONNECT_DISCONNECT,
+                "msg",          "%s", "Connection Reset",
+                NULL
+            );
+        } else if(nread == UV_EOF) {
+            log_info(0,
+                "gobj",         "%s", gobj_full_name(gobj),
+                "msgset",       "%s", MSGSET_CONNECT_DISCONNECT,
+                "msg",          "%s", "EOF",
+                NULL
+            );
+        } else {
+            log_error(0,
+                "gobj",         "%s", gobj_full_name(gobj),
+                "function",     "%s", __FUNCTION__,
+                "msgset",       "%s", MSGSET_LIBUV_ERROR,
+                "msg",          "%s", "read FAILED",
+                "uv_error",     "%s", uv_err_name(nread),
+                NULL
+            );
+        }
+        if(gobj_is_running(gobj)) {
+            gobj_stop(gobj); // auto-stop
+        }
+        return;
+    }
+
+    if(nread == 0) {
+        // Yes, sometimes arrive with nread 0.
+        return;
+    }
+
+    if(priv->verbose) {
+        log_debug_dump(
+            0,
+            buf->base,
+            nread,
+            ""
+        );
+    }
+
+    for(int i=0; i<nread; i++) {
+        process_key(gobj, buf->base[i]);
+    }
+}
+
+/***************************************************************************
+ *  Only NOW you can destroy this gobj,
+ *  when uv has released the handler.
+ ***************************************************************************/
+PRIVATE void on_close_cb(uv_handle_t* handle)
+{
+    hgobj gobj = handle->data;
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    if(gobj_trace_level(gobj) & TRACE_UV) {
+        trace_msg("<<< on_close_cb tcp0 p=%p", &priv->uv_tty);
+    }
+    priv->uv_handler_active = 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE void do_close(hgobj gobj)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    if(!priv->uv_handler_active) {
         log_error(0,
             "gobj",         "%s", gobj_full_name(gobj),
             "function",     "%s", __FUNCTION__,
-            "msgset",       "%s", MSGSET_LIBUV_ERROR,
-            "msg",          "%s", "read FAILED",
-            "uv_error",     "%s", uv_err_name(status),
+            "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
+            "msg",          "%s", "UV handler NOT ACTIVE!",
             NULL
         );
-        //toclose(gobj, TRUE);
         return;
     }
-    if (events & UV_READABLE) {
-        int kb = 0;
-        if(read(STDIN_FILENO, &kb, 1)==1) {
-            if(kb == ENTER || kb == KEY_ENTER) {
-                if(!empty_string(priv->bf)) {
-                    if(strcasecmp(priv->bf, "exit")==0 || strcasecmp(priv->bf, "quit")==0) {
-                        gobj_stop(gobj);
-                    } else {
-                        do_command(gobj, priv->bf);
-                    }
-                } else {
-                    printf("ycommand> ");
-                    fflush(stdout);
-                }
-                priv->idx = 0;
-                priv->bf[priv->idx] = 0;
-
-            } else {
-                if(kb >= 0x20 && kb <= 0x7f) {
-                    if(priv->idx < sizeof(priv->bf)-1) {
-                        priv->bf[priv->idx++] = kb;
-                        priv->bf[priv->idx] = 0;
-                    }
-                }
-            }
-        }
+    if(priv->uv_read_active) {
+        uv_read_stop((uv_stream_t *)&priv->uv_tty);
+        priv->uv_read_active = 0;
     }
+
+    if(gobj_trace_level(gobj) & TRACE_UV) {
+        trace_msg(">>> uv_close tcp p=%p", &priv->uv_tty);
+    }
+    uv_close((uv_handle_t *)&priv->uv_tty, on_close_cb);
 }
 
 /***************************************************************************

@@ -11,6 +11,7 @@
 #define _C_YCOMMAND_H 1
 
 #include <yuneta.h>
+#include "c_editline.h"
 
 #ifdef __cplusplus
 extern "C"{

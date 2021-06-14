@@ -251,6 +251,7 @@ static void register_yuno_and_more(void)
     /*--------------------*
      *  Register service
      *--------------------*/
+    gobj_register_gclass(GCLASS_EDITLINE);
     gobj_register_gclass(GCLASS_YCOMMAND);
 }
 

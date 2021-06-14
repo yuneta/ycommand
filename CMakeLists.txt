@@ -37,10 +37,12 @@ SET (YUNO_SRCS
     src/main.c
     src/yuno_ycommand.c
     src/c_ycommand.c
+    src/c_editline.c
 )
 SET (YUNO_HDRS
     src/yuno_ycommand.h
     src/c_ycommand.h
+    src/c_editline.h
 )
 
 ##############################################
@@ -81,3 +83,12 @@ install(
     WORLD_READ WORLD_EXECUTE
     DESTINATION ${BIN_DEST_DIR}
 )
+
+# compile in Release mode optimized but adding debug symbols, useful for profiling :
+#
+#     cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+#
+# or compile with NO optimization and adding debug symbols :
+#
+#     cmake -DCMAKE_BUILD_TYPE=Debug ..
+#

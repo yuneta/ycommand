@@ -476,11 +476,7 @@ PRIVATE void refreshLine(PRIVATE_DATA *l)
 
     printf(Erase_Whole_Line);           // Erase line
     printf(Move_Horizontal, 1);         // Move to begining of line
-
     /* Write the prompt and the current buffer content */
-//     write(STDOUT_FILENO, l->prompt, plen);
-//     write(STDOUT_FILENO, buf, len);
-
     printf("%s%*.*s", l->prompt, (int)len, (int)len, buf);
     printf(Move_Horizontal, (int)(pos+plen+1));   // Move cursor to original position
     fflush(stdout);

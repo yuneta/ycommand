@@ -572,7 +572,7 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         );
     }
 
-    if(buf->base[0] <= 0x1B && nread <= 8) {
+    if((buf->base[0] <= 0x1B && nread <= 8) || buf->base[0] == 0x7F) {
         if(buf->base[0] == 3) {
             gobj_stop(gobj);
             return;
@@ -911,7 +911,7 @@ PRIVATE char *get_history_file(char *bf, int bfsize)
     if(home) {
         snprintf(bf, bfsize, "%s/.yuneta", home);
         mkdir(bf, 0700);
-        strcat(bf, "/history.txt");
+        strcat(bf, "/history2.txt");
     }
     return bf;
 }
@@ -1092,7 +1092,10 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
             printf("%s\n", comment);
         }
         json_t *jn_data = WEBIX_DATA(kw);
-        if(json_array_size(jn_data) || json_object_size(jn_data)) {
+        if(json_is_string(jn_data)) {
+            const char *data = json_string_value(jn_data);
+            printf("%s\n", data);
+        } else {
             print_json(jn_data);
         }
     }

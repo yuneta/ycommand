@@ -7,6 +7,7 @@
  *          Copyright (c) 2016 Niyamaka.
  *          All Rights Reserved.
  ***********************************************************************/
+#include <sys/ioctl.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -65,10 +66,13 @@ PRIVATE void do_close(hgobj gobj);
 PRIVATE int cmd_connect(hgobj gobj);
 PRIVATE int do_command(hgobj gobj, const char *command);
 PRIVATE int clear_input_line(hgobj gobj);
+PRIVATE char *get_history_file(char *bf, int bfsize);
 
 /***************************************************************************
  *          Data: config, public data, private data
  ***************************************************************************/
+volatile struct winsize winsz;
+
 struct {
     const char *event;
     unsigned long long key;
@@ -168,11 +172,33 @@ typedef struct _PRIVATE_DATA {
 /***************************************************************************
  *      Framework Method create
  ***************************************************************************/
+PRIVATE void sig_handler(int sig)
+{
+    if (SIGWINCH == sig) {
+        ioctl(0, TIOCGWINSZ, &winsz);
+    }
+}
 PRIVATE void mt_create(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
-    priv->gobj_editline = gobj_create("", GCLASS_EDITLINE, 0, gobj);
+    ioctl(0, TIOCGWINSZ, &winsz);
+    // Capture SIGWINCH
+    signal(SIGWINCH, sig_handler);
+
+    /*
+     *  History filename, for editline
+     */
+    char history_file[PATH_MAX];
+    get_history_file(history_file, sizeof(history_file));
+    json_t *kw_editline = json_pack(
+        "{s:s, s:i, s:i}",
+        "history_file", history_file,
+        "cx", winsz.ws_col,
+        "cy", winsz.ws_row
+    );
+
+    priv->gobj_editline = gobj_create("", GCLASS_EDITLINE, kw_editline, gobj);
 
     /*
      *  Do copy of heavy used parameters, for quick access.
@@ -459,20 +485,10 @@ PRIVATE const char *event_by_key(int kb)
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE int process_key(hgobj gobj, uint64_t kb)
+PRIVATE int process_key(hgobj gobj, uint8_t kb)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
-    const char *event = event_by_key(kb);
 
-    if(!empty_string(event)) {
-        gobj_send_event(priv->gobj_editline, event, 0, gobj);
-        return 0;
-    }
-
-    if(kb == 3) {
-        gobj_stop(gobj);
-        return 0;
-    }
     if(kb >= 0x20 && kb <= 0x7f) {
         json_t *kw_char = json_pack("{s:i}",
             "char", kb
@@ -556,10 +572,26 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         );
     }
 
-    unsigned char b[8];
-    memset(b, 0, sizeof(b));
-    memmove(b, buf->base, nread);
-    process_key(gobj, *((uint64_t *)b));
+    if(buf->base[0] <= 0x1B && nread <= 8) {
+        if(buf->base[0] == 3) {
+            gobj_stop(gobj);
+            return;
+        }
+
+        unsigned char b[8];
+        memset(b, 0, sizeof(b));
+        memmove(b, buf->base, nread);
+        const char *event = event_by_key(*((uint64_t *)b));
+
+        if(!empty_string(event)) {
+            gobj_send_event(priv->gobj_editline, event, 0, gobj);
+        }
+
+    } else {
+        for(int i=0; i<nread; i++) {
+            process_key(gobj, buf->base[i]);
+        }
+    }
 }
 
 /***************************************************************************
@@ -869,6 +901,44 @@ PRIVATE int clear_input_line(hgobj gobj)
     return 0;
 }
 
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE char *get_history_file(char *bf, int bfsize)
+{
+    char *home = getenv("HOME");
+    memset(bf, 0, bfsize);
+    if(home) {
+        snprintf(bf, bfsize, "%s/.yuneta", home);
+        mkdir(bf, 0700);
+        strcat(bf, "/history.txt");
+    }
+    return bf;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int list_history(hgobj gobj)
+{
+    char history_file[PATH_MAX];
+    get_history_file(history_file, sizeof(history_file));
+
+    FILE *file = fopen(history_file, "r");
+    if(file) {
+        char temp[4*1024];
+        while(fgets(temp, sizeof(temp), file)) {
+            left_justify(temp);
+            if(strlen(temp)>0) {
+                printf("%s\n", temp);
+            }
+        }
+        fclose(file);
+    }
+    clear_input_line(gobj);
+    return 0;
+}
+
 
 
 
@@ -902,7 +972,7 @@ PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
         if(!empty_string(command)) {
             do_command(gobj, command);
         } else {
-            printf("Type 'quit' or 'exit' to exit\n");
+            printf("Type 'quit' to exit, 'history' to show history\n");
             clear_input_line(gobj);
         }
     } else {
@@ -954,6 +1024,19 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         KW_DECREF(kw);
         return 0;
     }
+    if(strcasecmp(command, "exit")==0 || strcasecmp(command, "quit")==0) {
+        gobj_stop(gobj);
+        KW_DECREF(kw_input_command);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    if(strcasecmp(command, "history")==0) {
+        list_history(gobj);
+        KW_DECREF(kw_input_command);
+        KW_DECREF(kw);
+        return 0;
+    }
 
     char *comment;
     GBUFFER *gbuf_parsed_command = replace_cli_vars(gobj, command, &comment);
@@ -991,12 +1074,6 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         printf("\n"); fflush(stdout);
     }
     KW_DECREF(kw_input_command);
-
-//     /*
-//      *  Clear input line
-//      */
-//     clear_input_line(gobj);
-
     KW_DECREF(kw);
     return 0;
 }

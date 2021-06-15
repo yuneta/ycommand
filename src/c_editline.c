@@ -143,6 +143,7 @@ typedef struct linenoiseCompletions {
 /***************************************************************************
  *          Data: config, public data, private data
  ***************************************************************************/
+
 /*---------------------------------------------*
  *      Attributes - order affect to oid's
  *---------------------------------------------*/
@@ -215,6 +216,9 @@ PRIVATE void refreshLine(PRIVATE_DATA *l);
 
 
 
+/***************************************************************************
+ *      Framework Method create
+ ***************************************************************************/
 
 /***************************************************************************
  *      Framework Method create
@@ -244,9 +248,6 @@ PRIVATE void mt_create(hgobj gobj)
         priv->cols = priv->cx;
     SET_PRIV(cy,                        gobj_read_int32_attr)
     SET_PRIV(history_max_len,           gobj_read_int32_attr)
-
-    int x = gobj_read_int32_attr(gobj, "x");
-    int y = gobj_read_int32_attr(gobj, "y");
 
     int buffer_size = gobj_read_int32_attr(gobj, "buffer_size");
     priv->buf = gbmem_malloc(buffer_size);
@@ -294,6 +295,7 @@ PRIVATE void mt_writing(hgobj gobj, const char *path)
 PRIVATE int mt_start(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
     refreshLine(priv);
     return 0;
 }

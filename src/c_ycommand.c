@@ -35,20 +35,20 @@ enum {
     CTRL_Y = 25,
     ESCAPE = 27,
 
-    KEY_START =         0x1B5B48,       // .[H
-    KEY_PREV_PAGE =     0x1B5B357E,     // .[5~
-    KEY_NEXT_PAGE =     0x1B5B367E,     // .[6~
-    KEY_END =           0x1B5B46,       // .[F
-    KEY_UP =            0x1B5B41,       // .[A
-    KEY_DOWN =          0x1B5B42,       // .[B
-    KEY_LEFT =          0x1B5B44,       // .[D
-    KEY_RIGHT =         0x1B5B43,       // .[C
-    KEY_INS =           0x1B5B327E,     // .[2~
-    KEY_DEL =           0x1B5B337E,     // .[3~
-    KEY_ALT_START =     0x1B5B313B3348, // .[1;3H
-    KEY_ALT_PREV_PAGE = 0x1B5B353B337E, // .[5;3~
-    KEY_ALT_NEXT_PAGE = 0x1B5B363B337E, // .[6;3~
-    KEY_ALT_END =       0x1B5B313B3346, // .[1;3F
+    KEY_START =         0x485B1B, // .[H
+    KEY_PREV_PAGE =     0x7E355B1B, // .[5~
+    KEY_NEXT_PAGE =     0x7E365B1B, // .[6~
+    KEY_END =           0x465B1B, // .[F
+    KEY_UP =            0x415B1B, // .[A
+    KEY_DOWN =          0x425B1B, // .[B
+    KEY_LEFT =          0x445B1B, // .[D
+    KEY_RIGHT =         0x435B1B, // .[C
+    KEY_INS =           0x7E325B1B, // .[2~
+    KEY_DEL =           0x7E335B1B, // .[3~
+    KEY_ALT_START =     0x48333B315B1B, // .[1;3H
+    KEY_ALT_PREV_PAGE = 0x7E333B355B1B, // .[5;3~
+    KEY_ALT_NEXT_PAGE = 0x7E333B365B1B, // .[6;3~
+    KEY_ALT_END =       0x46333B315B1B, // .[1;3F
 };
 
 /***************************************************************************
@@ -64,6 +64,7 @@ PRIVATE void on_close_cb(uv_handle_t* handle);
 PRIVATE void do_close(hgobj gobj);
 PRIVATE int cmd_connect(hgobj gobj);
 PRIVATE int do_command(hgobj gobj, const char *command);
+PRIVATE int clear_input_line(hgobj gobj);
 
 /***************************************************************************
  *          Data: config, public data, private data
@@ -458,7 +459,7 @@ PRIVATE const char *event_by_key(int kb)
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE int process_key(hgobj gobj, int kb)
+PRIVATE int process_key(hgobj gobj, uint64_t kb)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
     const char *event = event_by_key(kb);
@@ -555,9 +556,10 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         );
     }
 
-    for(int i=0; i<nread; i++) {
-        process_key(gobj, buf->base[i]);
-    }
+    unsigned char b[8];
+    memset(b, 0, sizeof(b));
+    memmove(b, buf->base, nread);
+    process_key(gobj, *((uint64_t *)b));
 }
 
 /***************************************************************************
@@ -810,28 +812,17 @@ PRIVATE int display_webix_result(
 
     if(result < 0) {
         printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
-//         if(priv->file_saving_output) {
-//             fprintf(priv->file_saving_output, "ERROR %d: %s\n", result, comment);
-//         }
     } else {
         if(!empty_string(comment)) {
             printf("%s\n", comment);
-//             if(priv->file_saving_output) {
-//                 fprintf(priv->file_saving_output, "%s\n", comment);
-//             }
         }
     }
 
     if(json_is_array(jn_data)) {
         if (mode_form) {
-            { // XXX if(json_array_size(jn_data)>0) {
-                char *data = json2str(jn_data);
-                printf("%s\n", data);
-//                 if(priv->file_saving_output) {
-//                     fprintf(priv->file_saving_output, "%s\n", data);
-//                 }
-                gbmem_free(data);
-            }
+            char *data = json2str(jn_data);
+            printf("%s\n", data);
+            gbmem_free(data);
         } else {
             /*
              *  display as table
@@ -841,42 +832,40 @@ PRIVATE int display_webix_result(
                 if(gbuf) {
                     char *p = gbuf_cur_rd_pointer(gbuf);
                     printf("%s\n", p);
-//                     if(priv->file_saving_output) {
-//                         fprintf(priv->file_saving_output, "%s\n", p);
-//                     }
                     gbuf_decref(gbuf);
                 }
             } else {
-                { // XXX Display [] if empty array if(json_array_size(jn_data)>0) {
-                    char *text = json2str(jn_data);
-                    if(text) {
-                        printf("%s\n", text);
-//                         if(priv->file_saving_output) {
-//                             fprintf(priv->file_saving_output, "%s\n", text);
-//                         }
-                        gbmem_free(text);
-                    }
+                char *text = json2str(jn_data);
+                if(text) {
+                    printf("%s\n", text);
+                    gbmem_free(text);
                 }
             }
         }
     } else if(json_is_object(jn_data)) {
         char *data = json2str(jn_data);
         printf("%s\n", data);
-//         if(priv->file_saving_output) {
-//             fprintf(priv->file_saving_output, "%s\n", data);
-//         }
         gbmem_free(data);
     }
-
-//     if(priv->file_saving_output) {
-//         fflush(priv->file_saving_output);
-//     }
-
-//     SetFocus(priv->gobj_editline);
-
-    printf("\nycommand> "); fflush(stdout);
+    clear_input_line(gobj);
 
     JSON_DECREF(webix);
+    return 0;
+}
+
+/***************************************************************************
+ *  Clear input line
+ ***************************************************************************/
+PRIVATE int clear_input_line(hgobj gobj)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    printf("\n");
+
+    json_t *kw_line = json_object();
+    json_object_set_new(kw_line, "text", json_string(""));
+    gobj_send_event(priv->gobj_editline, "EV_SETTEXT", kw_line, gobj);
+
     return 0;
 }
 
@@ -914,7 +903,7 @@ PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
             do_command(gobj, command);
         } else {
             printf("Type 'quit' or 'exit' to exit\n");
-            printf("ycommand> "); fflush(stdout);
+            clear_input_line(gobj);
         }
     } else {
         if(empty_string(command)) {
@@ -937,12 +926,8 @@ PRIVATE int ac_on_close(hgobj gobj, const char *event, json_t *kw, hgobj src)
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
     gobj_write_pointer_attr(gobj, "gobj_connector", 0);
-//     if(!gobj_is_running(gobj)) {
-//         KW_DECREF(kw);
-//         return 0;
-//     }
     if(priv->verbose || priv->interactive) {
-        printf("Disconnected.\n");
+        printf("\nDisconnected.\n");
     }
 
     gobj_set_exit_code(-1);
@@ -964,19 +949,17 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
     const char *command = kw_get_str(kw_input_command, "text", 0, 0);
 
     if(empty_string(command)) {
-        printf("\nycommand> "); fflush(stdout);
+        clear_input_line(gobj);
         KW_DECREF(kw_input_command);
         KW_DECREF(kw);
         return 0;
     }
 
-    printf("%s\n", command);
-
     char *comment;
     GBUFFER *gbuf_parsed_command = replace_cli_vars(gobj, command, &comment);
     if(!gbuf_parsed_command) {
         printf("%s%s%s\n", On_Red BWhite, command, Color_Off);
-        printf("\nycommand> "); fflush(stdout);
+        clear_input_line(gobj);
         KW_DECREF(kw_input_command);
         KW_DECREF(kw);
         return 0;
@@ -1005,14 +988,14 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         );
     } else {
         /* asychronous responses return 0 */
-        printf("Waiting response..."); fflush(stdout);
+        printf("\n"); fflush(stdout);
     }
+    KW_DECREF(kw_input_command);
 
-    /*
-     *  Clear input line
-     */
-    json_object_set_new(kw_input_command, "text", json_string(""));
-    gobj_send_event(src, "EV_SETTEXT", kw_input_command, gobj);
+//     /*
+//      *  Clear input line
+//      */
+//     clear_input_line(gobj);
 
     KW_DECREF(kw);
     return 0;
@@ -1031,7 +1014,7 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
         if(!empty_string(comment)) {
             printf("%s\n", comment);
         }
-        json_t *jn_data = WEBIX_DATA(kw); //kw_get_dict_value(kw, "data", 0, 0);
+        json_t *jn_data = WEBIX_DATA(kw);
         if(json_array_size(jn_data) || json_object_size(jn_data)) {
             print_json(jn_data);
         }
@@ -1039,7 +1022,7 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
     KW_DECREF(kw);
 
     if(gobj_read_bool_attr(gobj, "interactive")) {
-        printf("\nycommand> "); fflush(stdout);
+        clear_input_line(gobj);
     } else {
         gobj_set_exit_code(result);
         gobj_shutdown();

@@ -53,6 +53,9 @@
  * - http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
  * - http://www.3waylabs.com/nw/WWW/products/wizcon/vt220.html
  *
+ * - https://en.wikipedia.org/wiki/ANSI_escape_code
+ * - https://www.systutorials.com/docs/linux/man/4-console_codes/
+ *
  * Todo list:
  * - Filter bogus Ctrl+<char> combinations.
  * - Win32 support
@@ -118,7 +121,6 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <ncurses/ncurses.h>
 #include "c_editline.h"
 
 /***************************************************************************
@@ -145,7 +147,7 @@ typedef struct linenoiseCompletions {
  *      Attributes - order affect to oid's
  *---------------------------------------------*/
 PRIVATE sdata_desc_t tattr_desc[] = {
-SDATA (ASN_OCTET_STR,   "prompt",               0,  "> ", "Prompt"),
+SDATA (ASN_OCTET_STR,   "prompt",               0,  "ycommand> ", "Prompt"),
 SDATA (ASN_OCTET_STR,   "history_file",         0,  0, "History file"),
 SDATA (ASN_INTEGER,     "history_max_len",      0,  10000, "history max len (max lines)"),
 SDATA (ASN_INTEGER,     "buffer_size",          0,  4*1024, "edition buffer size"),
@@ -181,7 +183,6 @@ typedef struct _PRIVATE_DATA {
     int cy;
     const char *fg_color;
     const char *bg_color;
-    WINDOW *wn;     // ncurses window handler
 
     const char *history_file;
     const char *prompt; /* Prompt to display. */
@@ -276,7 +277,7 @@ PRIVATE void mt_writing(hgobj gobj, const char *path)
     ELIF_EQ_SET_PRIV(fg_color,              gobj_read_str_attr)
     ELIF_EQ_SET_PRIV(prompt,                gobj_read_str_attr)
         priv->plen = strlen(priv->prompt);
-        gobj_send_event(gobj, "EV_PAINT", 0, gobj);
+        refreshLine(priv);
     ELIF_EQ_SET_PRIV(cx,                    gobj_read_int32_attr)
         priv->cols = priv->cx;
         //TODO igual hay que refrescar
@@ -292,7 +293,8 @@ PRIVATE void mt_writing(hgobj gobj, const char *path)
  ***************************************************************************/
 PRIVATE int mt_start(hgobj gobj)
 {
-    gobj_send_event(gobj, "EV_PAINT", 0, gobj);
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+    refreshLine(priv);
     return 0;
 }
 
@@ -470,18 +472,11 @@ PRIVATE void refreshLine(PRIVATE_DATA *l)
         len--;
     }
 
-    /* Cursor to left edge */
-// TODO    wmove(l->wn, 0, 0); // move to begining of line
-//     wclrtoeol(l->wn);   // erase to end of line
-//
-//     /* Write the prompt and the current buffer content */
-//     waddnstr(l->wn, l->prompt, plen);
-//     waddnstr(l->wn, buf, len);
-//
-//     /* Move cursor to original position. */
-//     wmove(l->wn, 0, (int)(pos+plen));
-//
-//     wrefresh(l->wn);
+    printf(Erase_Whole_Line);
+    printf(Move_Horizontal, 1);                 // Move to begining of line
+    printf("%s%s", l->prompt, buf);
+    printf(Move_Horizontal, (int)(pos+plen+1));   // Move cursor to original position
+    fflush(stdout);
 }
 
 /***************************************************************************
@@ -1051,38 +1046,7 @@ PRIVATE int ac_del_prev_word(hgobj gobj, const char *event, json_t *kw, hgobj sr
 }
 
 /***************************************************************************
- *
- ***************************************************************************/
-PRIVATE int ac_paint(hgobj gobj, const char *event, json_t *kw, hgobj src)
-{
-    PRIVATE_DATA *priv = gobj_priv_data(gobj);
-
-    if(!priv->wn) {
-        // Debugging in kdevelop or batch mode has no wn
-        printf("\n%s%s", priv->prompt, priv->buf);
-        fflush(stdout);
-        KW_DECREF(kw);
-        return 0;
-    }
-
-// TODO    wclear(priv->wn);
-
-//     if(has_colors()) {
-//         if(!empty_string(priv->fg_color) && !empty_string(priv->bg_color)) {
-// // TODO            wbkgd(
-// //                 priv->wn,
-// //                 _get_curses_color(priv->fg_color, priv->bg_color)
-// //             );
-//         }
-//     }
-    refreshLine(priv);
-
-    KW_DECREF(kw);
-    return 0;
-}
-
-/***************************************************************************
- *
+ *  HACK kw is EVF_KW_WRITING
  ***************************************************************************/
 PRIVATE int ac_gettext(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
@@ -1121,45 +1085,7 @@ PRIVATE int ac_settext(hgobj gobj, const char *event, json_t *kw, hgobj src)
         linenoiseHistoryAdd(l, "");
     }
 
-    gobj_send_event(gobj, "EV_PAINT", 0, gobj);
-
-    KW_DECREF(kw);
-    return 0;
-}
-
-/***************************************************************************
- *
- ***************************************************************************/
-PRIVATE int ac_setfocus(hgobj gobj, const char *event, json_t *kw, hgobj src)
-{
-    PRIVATE_DATA *priv = gobj_priv_data(gobj);
-
-    if(priv->wn) {
-//TODO         wmove(priv->wn, 0, priv->plen + priv->pos);
-//         wrefresh(priv->wn);
-    }
-
-    KW_DECREF(kw);
-    return 0;
-}
-
-/***************************************************************************
- *
- ***************************************************************************/
-PRIVATE int ac_move(hgobj gobj, const char *event, json_t *kw, hgobj src)
-{
-    PRIVATE_DATA *priv = gobj_priv_data(gobj);
-
-    int x = kw_get_int(kw, "x", 0, KW_REQUIRED);
-    int y = kw_get_int(kw, "y", 0, KW_REQUIRED);
-    gobj_write_int32_attr(gobj, "x", x);
-    gobj_write_int32_attr(gobj, "y", y);
-
-    if(priv->wn) {
-        //log_debug_printf(0, "move window x %d y %d %s", x, y, gobj_name(gobj));
-// TODO        mvwin(priv->wn, y, x);
-//         wrefresh(priv->wn);
-    }
+    refreshLine(l);
 
     KW_DECREF(kw);
     return 0;
@@ -1177,12 +1103,7 @@ PRIVATE int ac_size(hgobj gobj, const char *event, json_t *kw, hgobj src)
     gobj_write_int32_attr(gobj, "cx", cx);
     gobj_write_int32_attr(gobj, "cy", cy);
 
-    if(priv->wn) {
-        //log_debug_printf(0, "size window cx %d cy %d %s", cx, cy, gobj_name(gobj));
-// TODO        wresize(priv->wn, cy, cx);
-//         wrefresh(priv->wn);
-    }
-    gobj_send_event(gobj, "EV_PAINT", 0, gobj);  // repaint, ncurses doesn't do it
+    refreshLine(priv);
 
     KW_DECREF(kw);
     return 0;
@@ -1227,10 +1148,6 @@ PRIVATE const EVENT input_events[] = {
     {"EV_EDITLINE_DEL_PREV_WORD",   0,              0,  0},
     {"EV_GETTEXT",                  EVF_KW_WRITING,  0,  0},
     {"EV_SETTEXT",                  0,              0,  0},
-    {"EV_KILLFOCUS",                0,              0,  0},
-    {"EV_SETFOCUS",                 0,              0,  0},
-    {"EV_PAINT",                    0,              0,  0},
-    {"EV_MOVE",                     0,              0,  0},
     {"EV_SIZE",                     0,              0,  0},
     {"EV_CLEAR_HISTORY",            0,              0,  0},
     {NULL, 0, 0, 0}
@@ -1264,11 +1181,7 @@ PRIVATE EV_ACTION ST_IDLE[] = {
 
     {"EV_GETTEXT",          ac_gettext,         0},
     {"EV_SETTEXT",          ac_settext,         0},
-    {"EV_SETFOCUS",         ac_setfocus,        0},
-    {"EV_KILLFOCUS",        0,                  0},
-    {"EV_MOVE",             ac_move,            0},
     {"EV_SIZE",             ac_size,            0},
-    {"EV_PAINT",            ac_paint,           0},
     {"EV_CLEAR_HISTORY",    ac_clear_history,   0},
     {0,0,0}
 };

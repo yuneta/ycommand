@@ -911,7 +911,7 @@ PRIVATE char *get_history_file(char *bf, int bfsize)
     if(home) {
         snprintf(bf, bfsize, "%s/.yuneta", home);
         mkdir(bf, 0700);
-        strcat(bf, "/history2.txt");
+        strcat(bf, "/history.txt");
     }
     return bf;
 }

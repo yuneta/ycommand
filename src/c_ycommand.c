@@ -1231,6 +1231,8 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
  ***************************************************************************/
 PRIVATE int ac_edit_config(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
     int result = WEBIX_RESULT(kw);
     const char *comment = WEBIX_COMMENT(kw);
     if(result != 0) {
@@ -1296,7 +1298,9 @@ PRIVATE int ac_edit_config(hgobj gobj, const char *event, json_t *kw, hgobj src)
         path
     );
 
-    clear_input_line(gobj);
+    json_t *kw_line = json_object();
+    json_object_set_new(kw_line, "text", json_string(upgrade_command));
+    gobj_send_event(priv->gobj_editline, "EV_SETTEXT", kw_line, gobj);
 
     KW_DECREF(kw);
     return 0;

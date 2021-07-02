@@ -36,20 +36,28 @@ enum {
     CTRL_Y = 25,
     ESCAPE = 27,
 
-    KEY_START =         0x485B1B, // .[H
-    KEY_PREV_PAGE =     0x7E355B1B, // .[5~
-    KEY_NEXT_PAGE =     0x7E365B1B, // .[6~
-    KEY_END =           0x465B1B, // .[F
-    KEY_UP =            0x415B1B, // .[A
-    KEY_DOWN =          0x425B1B, // .[B
-    KEY_LEFT =          0x445B1B, // .[D
-    KEY_RIGHT =         0x435B1B, // .[C
-    KEY_INS =           0x7E325B1B, // .[2~
-    KEY_DEL =           0x7E335B1B, // .[3~
-    KEY_ALT_START =     0x48333B315B1B, // .[1;3H
-    KEY_ALT_PREV_PAGE = 0x7E333B355B1B, // .[5;3~
-    KEY_ALT_NEXT_PAGE = 0x7E333B365B1B, // .[6;3~
-    KEY_ALT_END =       0x46333B315B1B, // .[1;3F
+    MKEY_START =         0x485B1B, // .[H
+    MKEY_PREV_PAGE =     0x7E355B1B, // .[5~
+    MKEY_NEXT_PAGE =     0x7E365B1B, // .[6~
+    MKEY_END =           0x465B1B, // .[F
+    MKEY_UP =            0x415B1B, // .[A
+    MKEY_DOWN =          0x425B1B, // .[B
+    MKEY_LEFT =          0x445B1B, // .[D
+    MKEY_RIGHT =         0x435B1B, // .[C
+
+    MKEY_START2 =        0x484F1B, // .[H
+    MKEY_END2 =          0x464F1B, // .[F
+    MKEY_UP2 =           0x414F1B, // .OA
+    MKEY_DOWN2 =         0x424F1B, // .OB
+    MKEY_LEFT2 =         0x444F1B, // .OD
+    MKEY_RIGHT2 =        0x434F1B, // .OC
+
+    MKEY_INS =           0x7E325B1B, // .[2~
+    MKEY_DEL =           0x7E335B1B, // .[3~
+    MKEY_ALT_START =     0x48333B315B1B, // .[1;3H
+    MKEY_ALT_PREV_PAGE = 0x7E333B355B1B, // .[5;3~
+    MKEY_ALT_NEXT_PAGE = 0x7E333B365B1B, // .[6;3~
+    MKEY_ALT_END =       0x46333B315B1B, // .[1;3F
 };
 
 /***************************************************************************
@@ -79,21 +87,27 @@ struct keytable_s {
     unsigned long long key;
 } keytable[] = {
 {"editline",    "EV_EDITLINE_MOVE_START",       CTRL_A},
-{"editline",    "EV_EDITLINE_MOVE_START",       KEY_START},
+{"editline",    "EV_EDITLINE_MOVE_START",       MKEY_START},
+{"editline",    "EV_EDITLINE_MOVE_START",       MKEY_START2},
 {"editline",    "EV_EDITLINE_MOVE_END",         CTRL_E},
-{"editline",    "EV_EDITLINE_MOVE_END",         KEY_END},
+{"editline",    "EV_EDITLINE_MOVE_END",         MKEY_END},
+{"editline",    "EV_EDITLINE_MOVE_END",         MKEY_END2},
 {"editline",    "EV_EDITLINE_MOVE_LEFT",        CTRL_B},
-{"editline",    "EV_EDITLINE_MOVE_LEFT",        KEY_LEFT},
+{"editline",    "EV_EDITLINE_MOVE_LEFT",        MKEY_LEFT},
+{"editline",    "EV_EDITLINE_MOVE_LEFT",        MKEY_LEFT2},
 {"editline",    "EV_EDITLINE_MOVE_RIGHT",       CTRL_F},
-{"editline",    "EV_EDITLINE_MOVE_RIGHT",       KEY_RIGHT},
+{"editline",    "EV_EDITLINE_MOVE_RIGHT",       MKEY_RIGHT},
+{"editline",    "EV_EDITLINE_MOVE_RIGHT",       MKEY_RIGHT2},
 {"editline",    "EV_EDITLINE_DEL_CHAR",         CTRL_D},
-{"editline",    "EV_EDITLINE_DEL_CHAR",         KEY_DEL},
+{"editline",    "EV_EDITLINE_DEL_CHAR",         MKEY_DEL},
 {"editline",    "EV_EDITLINE_BACKSPACE",        CTRL_H},
 {"editline",    "EV_EDITLINE_BACKSPACE",        BACKSPACE},
 {"editline",    "EV_EDITLINE_COMPLETE_LINE",    TAB},
 {"editline",    "EV_EDITLINE_ENTER",            ENTER},
-{"editline",    "EV_EDITLINE_PREV_HIST",        KEY_UP},
-{"editline",    "EV_EDITLINE_NEXT_HIST",        KEY_DOWN},
+{"editline",    "EV_EDITLINE_PREV_HIST",        MKEY_UP},
+{"editline",    "EV_EDITLINE_PREV_HIST",        MKEY_UP2},
+{"editline",    "EV_EDITLINE_NEXT_HIST",        MKEY_DOWN},
+{"editline",    "EV_EDITLINE_NEXT_HIST",        MKEY_DOWN2},
 {"editline",    "EV_EDITLINE_SWAP_CHAR",        CTRL_T},
 {"editline",    "EV_EDITLINE_DEL_LINE",         CTRL_U},
 {"editline",    "EV_EDITLINE_DEL_LINE",         CTRL_Y},
@@ -101,13 +115,13 @@ struct keytable_s {
 
 {"screen",      "EV_CLRSCR",                    CTRL_K},
 
-{"screen",      "EV_SCROLL_PAGE_UP",            KEY_PREV_PAGE},
-{"screen",      "EV_SCROLL_PAGE_DOWN",          KEY_NEXT_PAGE},
+{"screen",      "EV_SCROLL_PAGE_UP",            MKEY_PREV_PAGE},
+{"screen",      "EV_SCROLL_PAGE_DOWN",          MKEY_NEXT_PAGE},
 
-{"screen",      "EV_SCROLL_LINE_UP",            KEY_ALT_PREV_PAGE},
-{"screen",      "EV_SCROLL_LINE_DOWN",          KEY_ALT_NEXT_PAGE},
-{"screen",      "EV_SCROLL_TOP",                KEY_ALT_START},
-{"screen",      "EV_SCROLL_BOTTOM",             KEY_ALT_END},
+{"screen",      "EV_SCROLL_LINE_UP",            MKEY_ALT_PREV_PAGE},
+{"screen",      "EV_SCROLL_LINE_DOWN",          MKEY_ALT_NEXT_PAGE},
+{"screen",      "EV_SCROLL_TOP",                MKEY_ALT_START},
+{"screen",      "EV_SCROLL_BOTTOM",             MKEY_ALT_END},
 
 {0}
 };
@@ -127,7 +141,7 @@ SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno ro
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
 SDATA (ASN_POINTER,     "gobj_connector",   0,          0,              "connection gobj"),
 SDATA (ASN_OCTET_STR,   "display_mode",     SDF_WR|SDF_PERSIST,"table", "Display mode: table or form"),
-SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"vim",   "Editor"),
+SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"kate",   "Editor"),
 SDATA (ASN_POINTER,     "user_data",        0,          0,              "user data"),
 SDATA (ASN_POINTER,     "user_data2",       0,          0,              "more user data"),
 SDATA_END()
@@ -584,11 +598,11 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         memmove(b, buf->base, nread);
         struct keytable_s *kt = event_by_key(*((uint64_t *)b));
 
-        if(!empty_string(kt->event)) {
-            if(strcmp(kt->dst_gobj, "editline")==0) {
-                gobj_send_event(priv->gobj_editline, kt->event, 0, gobj);
-            } else {
+        if(kt && !empty_string(kt->event)) {
+            if(strcmp(kt->dst_gobj, "screen")==0) {
                 gobj_send_event(gobj, kt->event, 0, gobj);
+            } else {
+                gobj_send_event(priv->gobj_editline, kt->event, 0, gobj);
             }
         }
 
@@ -944,6 +958,101 @@ PRIVATE int list_history(hgobj gobj)
     return 0;
 }
 
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int save_local_json(hgobj gobj, char *path, int pathsize, const char *name, json_t *jn_content)
+{
+    const char *homedir;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+    snprintf(path, pathsize, "%s/.yuneta/configs/", homedir);
+    if(access(path, 0)!=0) {
+        mkrdir(path, 0, 0700);
+    }
+    if(strlen(name) > 5 && strstr(name + strlen(name) - strlen(".json"), ".json")) {
+        snprintf(path, pathsize, "%s/.yuneta/configs/%s", homedir, name);
+    } else {
+        snprintf(path, pathsize, "%s/.yuneta/configs/%s.json", homedir, name);
+    }
+    json_dump_file(jn_content, path, JSON_ENCODE_ANY | JSON_INDENT(4));
+    JSON_DECREF(jn_content);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int edit_json(hgobj gobj, const char *path)
+{
+    const char *editor = gobj_read_str_attr(gobj, "editor");
+    char command[NAME_MAX];
+    snprintf(command, sizeof(command), "%s %s", editor, path);
+
+    int ret = system(command);
+    return ret;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int save_local_string(hgobj gobj, char *path, int pathsize, const char *name, json_t *jn_content)
+{
+    const char *homedir;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+    snprintf(path, pathsize, "%s/.yuneta/configs/", homedir);
+    if(access(path, 0)!=0) {
+        mkrdir(path, 0, 0700);
+    }
+    snprintf(path, pathsize, "%s/.yuneta/configs/%s", homedir, name);
+    const char *s = json_string_value(jn_content);
+    if(s) {
+        FILE *file = fopen(path, "w");
+        if(file) {
+            fwrite(s, strlen(s), 1, file);
+            fclose(file);
+        }
+    }
+    JSON_DECREF(jn_content);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int save_local_base64(hgobj gobj, char *path, int pathsize, const char *name, json_t *jn_content)
+{
+    const char *homedir;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+    snprintf(path, pathsize, "%s/.yuneta/configs/", homedir);
+    if(access(path, 0)!=0) {
+        mkrdir(path, 0, 0700);
+    }
+    snprintf(path, pathsize, "%s/.yuneta/configs/%s", homedir, name);
+
+    const char *s = json_string_value(jn_content);
+    if(s) {
+        GBUFFER *gbuf_bin = gbuf_decodebase64string(s);
+        if(gbuf_bin) {
+            int fp = newfile(path, 0700, TRUE);
+            if(fp) {
+                write(fp, gbuf_cur_rd_pointer(gbuf_bin), gbuf_leftbytes(gbuf_bin));
+                close(fp);
+            }
+        }
+    }
+    JSON_DECREF(jn_content);
+    return 0;
+}
+
 
 
 
@@ -1088,30 +1197,277 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
  ***************************************************************************/
 PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
-    int result = WEBIX_RESULT(kw);
-    const char *comment = WEBIX_COMMENT(kw);
-    if(result != 0){
-        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
-    } else {
-        if(!empty_string(comment)) {
-            printf("%s\n", comment);
-        }
-        json_t *jn_data = WEBIX_DATA(kw);
-        if(json_is_string(jn_data)) {
-            const char *data = json_string_value(jn_data);
-            printf("%s\n", data);
-        } else {
-            print_json(jn_data);
-        }
-    }
-    KW_DECREF(kw);
-
     if(gobj_read_bool_attr(gobj, "interactive")) {
-        clear_input_line(gobj);
+        return display_webix_result(
+            gobj,
+            kw
+        );
     } else {
+        int result = WEBIX_RESULT(kw);
+        const char *comment = WEBIX_COMMENT(kw);
+        if(result != 0){
+            printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+        } else {
+            if(!empty_string(comment)) {
+                printf("%s\n", comment);
+            }
+            json_t *jn_data = WEBIX_DATA(kw);
+            if(json_is_string(jn_data)) {
+                const char *data = json_string_value(jn_data);
+                printf("%s\n", data);
+            } else {
+                print_json(jn_data);
+            }
+        }
+        KW_DECREF(kw);
         gobj_set_exit_code(result);
         gobj_shutdown();
     }
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_edit_config(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    int result = WEBIX_RESULT(kw);
+    const char *comment = WEBIX_COMMENT(kw);
+    if(result != 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    if(!record) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no data", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    const char *id = kw_get_str(record, "id", 0, 0);
+    if(!id) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no id", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    json_t *jn_content = kw_get_dict_value(record, "zcontent", 0, 0);
+    if(!jn_content) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no content", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    JSON_INCREF(jn_content);
+    char path[NAME_MAX];
+
+    save_local_json(gobj, path, sizeof(path), id, jn_content);
+    //log_debug_printf("save_local_json %s", path);
+    edit_json(gobj, path);
+
+    size_t flags = 0;
+    json_error_t error;
+    json_t *jn_new_content = json_load_file(path, flags, &error);
+    if(!jn_new_content) {
+        printf("%sERROR %d: Bad json format in '%s' source. Line %d, Column %d, Error '%s'%s\n",
+            On_Red BWhite,
+            result,
+            path,
+            error.line,
+            error.column,
+            error.text,
+            Color_Off
+        );
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+    JSON_DECREF(jn_new_content);
+
+    char upgrade_command[512];
+    snprintf(upgrade_command, sizeof(upgrade_command),
+        "create-config id='%s' content64=$$(%s) ",
+        id,
+        path
+    );
+
+    clear_input_line(gobj);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_view_config(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    int result = WEBIX_RESULT(kw);
+    const char *comment = WEBIX_COMMENT(kw);
+    if(result != 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    if(!record) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no data", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    json_t *jn_content = kw_get_dict_value(record, "zcontent", 0, 0);
+    if(!jn_content) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no content", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    const char *name = kw_get_str(record, "name", "__temporal__", 0);
+    JSON_INCREF(jn_content);
+    char path[NAME_MAX];
+
+    save_local_json(gobj, path, sizeof(path), name, jn_content);
+    //log_debug_printf("save_local_json %s", path);
+    edit_json(gobj, path);
+
+    clear_input_line(gobj);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_read_json(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    int result = WEBIX_RESULT(kw);
+    const char *comment = WEBIX_COMMENT(kw);
+    if(result != 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    if(!record) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no data", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    json_t *jn_content = kw_get_dict_value(record, "zcontent", 0, 0);
+    if(!jn_content) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no content", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    const char *name = kw_get_str(record, "name", "__temporal__", 0);
+    JSON_INCREF(jn_content);
+    char path[NAME_MAX];
+
+    save_local_json(gobj, path, sizeof(path), name, jn_content);
+    //log_debug_printf("save_local_json %s", path);
+    edit_json(gobj, path);
+
+    clear_input_line(gobj);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_read_file(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    int result = WEBIX_RESULT(kw);
+    const char *comment = WEBIX_COMMENT(kw);
+    if(result != 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    if(!record) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no data", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    json_t *jn_content = kw_get_dict_value(record, "zcontent", 0, 0);
+    if(!jn_content) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no content", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    const char *name = kw_get_str(record, "name", "__temporal__", 0);
+    JSON_INCREF(jn_content);
+    char path[NAME_MAX];
+
+    save_local_string(gobj, path, sizeof(path), name, jn_content);
+    //log_debug_printf("save_local_json %s", path);
+    edit_json(gobj, path);
+
+    clear_input_line(gobj);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_read_binary_file(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    int result = WEBIX_RESULT(kw);
+    const char *comment = WEBIX_COMMENT(kw);
+    if(result != 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    if(!record) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no data", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    json_t *jn_content = kw_get_dict_value(record, "content64", 0, 0);
+    if(!jn_content) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, "Internal error, no content", Color_Off);
+        clear_input_line(gobj);
+        KW_DECREF(kw);
+        return 0;
+    }
+
+    const char *name = kw_get_str(record, "name", "__temporal__", 0);
+    JSON_INCREF(jn_content);
+    char path[NAME_MAX];
+    save_local_base64(gobj, path, sizeof(path), name, jn_content);
+
+    clear_input_line(gobj);
+
+    KW_DECREF(kw);
     return 0;
 }
 
@@ -1164,6 +1520,13 @@ PRIVATE const EVENT input_events[] = {
     // top input
     {"EV_COMMAND",              0, 0, 0},
     {"EV_MT_COMMAND_ANSWER",    EVF_PUBLIC_EVENT,  0,  0},
+    {"EV_EDIT_CONFIG",          EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_VIEW_CONFIG",          EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_EDIT_YUNO_CONFIG",     EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_VIEW_YUNO_CONFIG",     EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_READ_JSON",            EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_READ_FILE",            EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_READ_BINARY_FILE",     EVF_PUBLIC_EVENT, 0, 0},
 
     {"EV_CLRSCR",               0, 0, 0},
 
@@ -1201,6 +1564,13 @@ PRIVATE EV_ACTION ST_DISCONNECTED[] = {
 PRIVATE EV_ACTION ST_CONNECTED[] = {
     {"EV_COMMAND",                  ac_command,                 0},
     {"EV_MT_COMMAND_ANSWER",        ac_command_answer,          0},
+    {"EV_EDIT_CONFIG",              ac_edit_config,             0},
+    {"EV_VIEW_CONFIG",              ac_view_config,             0},
+    {"EV_EDIT_YUNO_CONFIG",         ac_edit_config,             0},
+    {"EV_VIEW_YUNO_CONFIG",         ac_view_config,             0},
+    {"EV_READ_JSON",                ac_read_json,               0},
+    {"EV_READ_FILE",                ac_read_file,               0},
+    {"EV_READ_BINARY_FILE",         ac_read_binary_file,        0},
     {"EV_CLRSCR",                   ac_screen_ctrl,             0},
     {"EV_SCROLL_PAGE_UP",           ac_screen_ctrl,             0},
     {"EV_SCROLL_PAGE_DOWN",         ac_screen_ctrl,             0},

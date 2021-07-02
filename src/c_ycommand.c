@@ -73,40 +73,41 @@ PRIVATE char *get_history_file(char *bf, int bfsize);
  ***************************************************************************/
 volatile struct winsize winsz;
 
-struct {
+struct keytable_s {
+    const char *dst_gobj;
     const char *event;
     unsigned long long key;
 } keytable[] = {
-{"EV_EDITLINE_MOVE_START",       CTRL_A},
-{"EV_EDITLINE_MOVE_START",       KEY_START},
-{"EV_EDITLINE_MOVE_END",         CTRL_E},
-{"EV_EDITLINE_MOVE_END",         KEY_END},
-{"EV_EDITLINE_MOVE_LEFT",        CTRL_B},
-{"EV_EDITLINE_MOVE_LEFT",        KEY_LEFT},
-{"EV_EDITLINE_MOVE_RIGHT",       CTRL_F},
-{"EV_EDITLINE_MOVE_RIGHT",       KEY_RIGHT},
-{"EV_EDITLINE_DEL_CHAR",         CTRL_D},
-{"EV_EDITLINE_DEL_CHAR",         KEY_DEL},
-{"EV_EDITLINE_BACKSPACE",        CTRL_H},
-{"EV_EDITLINE_BACKSPACE",        BACKSPACE},
-{"EV_EDITLINE_COMPLETE_LINE",    TAB},
-{"EV_EDITLINE_ENTER",            ENTER},
-{"EV_EDITLINE_PREV_HIST",        KEY_UP},
-{"EV_EDITLINE_NEXT_HIST",        KEY_DOWN},
-{"EV_EDITLINE_SWAP_CHAR",        CTRL_T},
-{"EV_EDITLINE_DEL_LINE",         CTRL_U},
-{"EV_EDITLINE_DEL_LINE",         CTRL_Y},
-{"EV_EDITLINE_DEL_PREV_WORD",    CTRL_W},
+{"editline",    "EV_EDITLINE_MOVE_START",       CTRL_A},
+{"editline",    "EV_EDITLINE_MOVE_START",       KEY_START},
+{"editline",    "EV_EDITLINE_MOVE_END",         CTRL_E},
+{"editline",    "EV_EDITLINE_MOVE_END",         KEY_END},
+{"editline",    "EV_EDITLINE_MOVE_LEFT",        CTRL_B},
+{"editline",    "EV_EDITLINE_MOVE_LEFT",        KEY_LEFT},
+{"editline",    "EV_EDITLINE_MOVE_RIGHT",       CTRL_F},
+{"editline",    "EV_EDITLINE_MOVE_RIGHT",       KEY_RIGHT},
+{"editline",    "EV_EDITLINE_DEL_CHAR",         CTRL_D},
+{"editline",    "EV_EDITLINE_DEL_CHAR",         KEY_DEL},
+{"editline",    "EV_EDITLINE_BACKSPACE",        CTRL_H},
+{"editline",    "EV_EDITLINE_BACKSPACE",        BACKSPACE},
+{"editline",    "EV_EDITLINE_COMPLETE_LINE",    TAB},
+{"editline",    "EV_EDITLINE_ENTER",            ENTER},
+{"editline",    "EV_EDITLINE_PREV_HIST",        KEY_UP},
+{"editline",    "EV_EDITLINE_NEXT_HIST",        KEY_DOWN},
+{"editline",    "EV_EDITLINE_SWAP_CHAR",        CTRL_T},
+{"editline",    "EV_EDITLINE_DEL_LINE",         CTRL_U},
+{"editline",    "EV_EDITLINE_DEL_LINE",         CTRL_Y},
+{"editline",    "EV_EDITLINE_DEL_PREV_WORD",    CTRL_W},
 
-{"EV_CLRSCR",                    CTRL_K},
+{"screen",      "EV_CLRSCR",                    CTRL_K},
 
-{"EV_SCROLL_PAGE_UP",            KEY_PREV_PAGE},
-{"EV_SCROLL_PAGE_DOWN",          KEY_NEXT_PAGE},
+{"screen",      "EV_SCROLL_PAGE_UP",            KEY_PREV_PAGE},
+{"screen",      "EV_SCROLL_PAGE_DOWN",          KEY_NEXT_PAGE},
 
-{"EV_SCROLL_LINE_UP",            KEY_ALT_PREV_PAGE},
-{"EV_SCROLL_LINE_DOWN",          KEY_ALT_NEXT_PAGE},
-{"EV_SCROLL_TOP",                KEY_ALT_START},
-{"EV_SCROLL_BOTTOM",             KEY_ALT_END},
+{"screen",      "EV_SCROLL_LINE_UP",            KEY_ALT_PREV_PAGE},
+{"screen",      "EV_SCROLL_LINE_DOWN",          KEY_ALT_NEXT_PAGE},
+{"screen",      "EV_SCROLL_TOP",                KEY_ALT_START},
+{"screen",      "EV_SCROLL_BOTTOM",             KEY_ALT_END},
 
 {0}
 };
@@ -472,11 +473,11 @@ PRIVATE int cmd_connect(hgobj gobj)
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE const char *event_by_key(int kb)
+PRIVATE struct keytable_s *event_by_key(int kb)
 {
     for(int i=0; keytable[i].event!=0; i++) {
         if(kb == keytable[i].key) {
-            return keytable[i].event;
+            return &keytable[i];
         }
     }
     return 0;
@@ -581,10 +582,14 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         unsigned char b[8];
         memset(b, 0, sizeof(b));
         memmove(b, buf->base, nread);
-        const char *event = event_by_key(*((uint64_t *)b));
+        struct keytable_s *kt = event_by_key(*((uint64_t *)b));
 
-        if(!empty_string(event)) {
-            gobj_send_event(priv->gobj_editline, event, 0, gobj);
+        if(!empty_string(kt->event)) {
+            if(strcmp(kt->dst_gobj, "editline")==0) {
+                gobj_send_event(priv->gobj_editline, kt->event, 0, gobj);
+            } else {
+                gobj_send_event(gobj, kt->event, 0, gobj);
+            }
         }
 
     } else {
@@ -1113,6 +1118,39 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
 /***************************************************************************
  *
  ***************************************************************************/
+PRIVATE int ac_screen_ctrl(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    SWITCHS(event) {
+        CASES("EV_CLRSCR")
+            printf(Clear_Screen);
+            fflush(stdout);
+            gobj_send_event(priv->gobj_editline, "EV_REFRESH_LINE", 0, gobj);
+            break;
+        CASES("EV_SCROLL_PAGE_UP")
+            break;
+        CASES("EV_SCROLL_PAGE_DOWN")
+            break;
+        CASES("EV_SCROLL_LINE_UP")
+            break;
+        CASES("EV_SCROLL_LINE_DOWN")
+            break;
+        CASES("EV_SCROLL_TOP")
+            break;
+        CASES("EV_SCROLL_BOTTOM")
+            break;
+        DEFAULTS
+            break;
+    } SWITCHS_END;
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
 PRIVATE int ac_timeout(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
     KW_DECREF(kw);
@@ -1124,8 +1162,19 @@ PRIVATE int ac_timeout(hgobj gobj, const char *event, json_t *kw, hgobj src)
  ***************************************************************************/
 PRIVATE const EVENT input_events[] = {
     // top input
-    {"EV_COMMAND",          0, 0, 0},
-    {"EV_MT_COMMAND_ANSWER",EVF_PUBLIC_EVENT,  0,  0},
+    {"EV_COMMAND",              0, 0, 0},
+    {"EV_MT_COMMAND_ANSWER",    EVF_PUBLIC_EVENT,  0,  0},
+
+    {"EV_CLRSCR",               0, 0, 0},
+
+    {"EV_SCROLL_PAGE_UP",       0, 0, 0},
+    {"EV_SCROLL_PAGE_DOWN",     0, 0, 0},
+
+    {"EV_SCROLL_LINE_UP",       0, 0, 0},
+    {"EV_SCROLL_LINE_DOWN",     0, 0, 0},
+    {"EV_SCROLL_TOP",           0, 0, 0},
+    {"EV_SCROLL_BOTTOM",        0, 0, 0},
+
     {"EV_ON_OPEN",          0,  0,  0},
     {"EV_ON_CLOSE",         0,  0,  0},
     // bottom input
@@ -1152,6 +1201,13 @@ PRIVATE EV_ACTION ST_DISCONNECTED[] = {
 PRIVATE EV_ACTION ST_CONNECTED[] = {
     {"EV_COMMAND",                  ac_command,                 0},
     {"EV_MT_COMMAND_ANSWER",        ac_command_answer,          0},
+    {"EV_CLRSCR",                   ac_screen_ctrl,             0},
+    {"EV_SCROLL_PAGE_UP",           ac_screen_ctrl,             0},
+    {"EV_SCROLL_PAGE_DOWN",         ac_screen_ctrl,             0},
+    {"EV_SCROLL_LINE_UP",           ac_screen_ctrl,             0},
+    {"EV_SCROLL_LINE_DOWN",         ac_screen_ctrl,             0},
+    {"EV_SCROLL_TOP",               ac_screen_ctrl,             0},
+    {"EV_SCROLL_BOTTOM",            ac_screen_ctrl,             0},
     {"EV_ON_CLOSE",                 ac_on_close,                "ST_DISCONNECTED"},
     {"EV_TIMEOUT",                  ac_timeout,                 0},
     {"EV_STOPPED",                  0,                          0},

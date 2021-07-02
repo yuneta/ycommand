@@ -1115,6 +1115,19 @@ PRIVATE int ac_size(hgobj gobj, const char *event, json_t *kw, hgobj src)
 /***************************************************************************
  *
  ***************************************************************************/
+PRIVATE int ac_refresh_line(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    refreshLine(priv);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
 PRIVATE int ac_clear_history(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
@@ -1152,6 +1165,7 @@ PRIVATE const EVENT input_events[] = {
     {"EV_GETTEXT",                  EVF_KW_WRITING,  0,  0},
     {"EV_SETTEXT",                  0,              0,  0},
     {"EV_SIZE",                     0,              0,  0},
+    {"EV_REFRESH_LINE",             0,              0,  0},
     {"EV_CLEAR_HISTORY",            0,              0,  0},
     {NULL, 0, 0, 0}
 };
@@ -1185,6 +1199,7 @@ PRIVATE EV_ACTION ST_IDLE[] = {
     {"EV_GETTEXT",          ac_gettext,         0},
     {"EV_SETTEXT",          ac_settext,         0},
     {"EV_SIZE",             ac_size,            0},
+    {"EV_REFRESH_LINE",     ac_refresh_line,    0},
     {"EV_CLEAR_HISTORY",    ac_clear_history,   0},
     {0,0,0}
 };

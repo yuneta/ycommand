@@ -141,7 +141,7 @@ SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno ro
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
 SDATA (ASN_POINTER,     "gobj_connector",   0,          0,              "connection gobj"),
 SDATA (ASN_OCTET_STR,   "display_mode",     SDF_WR|SDF_PERSIST,"table", "Display mode: table or form"),
-SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"kate",   "Editor"),
+SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"kate",  "Editor"),
 SDATA (ASN_POINTER,     "user_data",        0,          0,              "user data"),
 SDATA (ASN_POINTER,     "user_data2",       0,          0,              "more user data"),
 SDATA_END()
@@ -988,7 +988,7 @@ PRIVATE int save_local_json(hgobj gobj, char *path, int pathsize, const char *na
 PRIVATE int edit_json(hgobj gobj, const char *path)
 {
     const char *editor = gobj_read_str_attr(gobj, "editor");
-    char command[NAME_MAX];
+    char command[PATH_MAX];
     snprintf(command, sizeof(command), "%s %s", editor, path);
 
     int ret = system(command);

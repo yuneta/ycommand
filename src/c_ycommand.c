@@ -8,6 +8,10 @@
  *          All Rights Reserved.
  ***********************************************************************/
 #include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <pty.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -141,7 +145,7 @@ SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno ro
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
 SDATA (ASN_POINTER,     "gobj_connector",   0,          0,              "connection gobj"),
 SDATA (ASN_OCTET_STR,   "display_mode",     SDF_WR|SDF_PERSIST,"table", "Display mode: table or form"),
-SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"kate",  "Editor"),
+SDATA (ASN_OCTET_STR,   "editor",           SDF_WR|SDF_PERSIST,"vim",   "Editor"),
 SDATA (ASN_POINTER,     "user_data",        0,          0,              "user data"),
 SDATA (ASN_POINTER,     "user_data2",       0,          0,              "more user data"),
 SDATA_END()
@@ -985,14 +989,268 @@ PRIVATE int save_local_json(hgobj gobj, char *path, int pathsize, const char *na
 /***************************************************************************
  *
  ***************************************************************************/
+// PRIVATE int edit_json(hgobj gobj, const char *path)
+// {
+//     const char *editor = gobj_read_str_attr(gobj, "editor");
+//     char command[PATH_MAX];
+//     snprintf(command, sizeof(command), "%s %s", editor, path);
+//
+//     int ret = system(command);
+//     return ret;
+// }
+
+
+// static BOOL fd_set_cloexec(const int fd)
+// {
+//     int flags = fcntl(fd, F_GETFD);
+//     if (flags < 0) return false;
+//     return (flags & FD_CLOEXEC) == 0 || fcntl(fd, F_SETFD, flags | FD_CLOEXEC) != -1;
+// }
+//
+// static BOOL fd_duplicate(int fd, uv_pipe_t *pipe)
+// {
+//     int fd_dup = dup(fd);
+//     if (fd_dup < 0) return false;
+//
+//     if (!fd_set_cloexec(fd_dup)) return false;
+//
+//     int status = uv_pipe_open(pipe, fd_dup);
+//     if(status) close(fd_dup);
+//     return status == 0;
+// }
+
+// static void wait_cb(void *arg)
+// {
+//     pty_process *process = (pty_process *) arg;
+//
+//     pid_t pid;
+//     int stat;
+//     do
+//         pid = waitpid(process->pid, &stat, 0);
+//     while (pid != process->pid && errno == EINTR);
+//
+//     if (WIFEXITED(stat)) {
+//         process->exit_code = WEXITSTATUS(stat);
+//     }
+//     if (WIFSIGNALED(stat)) {
+//         int sig = WTERMSIG(stat);
+//         process->exit_code = 128 + sig;
+//         process->exit_signal = sig;
+//     }
+//
+//     uv_async_send(&process->async);
+// }
+
+// static void async_cb(uv_async_t *async)
+// {
+//     pty_process *process = (pty_process *) async->data;
+//     process->exit_cb(process->ctx, process);
+//
+//     uv_close((uv_handle_t *) async, NULL);
+//     process_free(process);
+// }
+
+// static void process_read_cb(void *ctx, pty_buf_t *buf, bool eof)
+// {
+//     struct pss_tty *pss = (struct pss_tty *) ctx;
+//     if (eof && !process_running(pss->process))
+//         pss->lws_close_status = pss->process->exit_code == 0 ? 1000 : 1006;
+//     else
+//         pss->pty_buf = buf;
+//
+//     lws_callback_on_writable(pss->wsi);
+// }
+//
+// static void process_exit_cb(void *ctx, pty_process *process)
+// {
+//     struct pss_tty *pss = (struct pss_tty *) ctx;
+//     pss->process = NULL;
+//     if (process->killed) {
+//         lwsl_notice("process killed with signal %d, pid: %d\n", process->exit_signal, process->pid);
+//     } else {
+//         lwsl_notice("process exited with code %d, pid: %d\n", process->exit_code, process->pid);
+//         pss->lws_close_status = process->exit_code == 0 ? 1000 : 1006;
+//         lws_callback_on_writable(pss->wsi);
+//     }
+// }
+
+/***************************************************************************
+ *  execlp("/bin/sh","/bin/sh", "-c", "ls -l /bin/??", (char *)NULL);
+ ***************************************************************************/
+// PRIVATE int pty_async_spawn(
+//     hgobj gobj,
+//     uint16_t columns,
+//     uint16_t rows,
+//     const char *command
+// //     process_read_cb,
+// //     process_exit_cb
+// )
+// {
+//     int status = 0;
+//
+//     uv_disable_stdio_inheritance();
+//
+//     int master, pid;
+//     struct winsize size = {24, 80, 0, 0 };
+//     pid = forkpty(&master, NULL, NULL, &size);
+//     if (pid < 0) {
+//         // Can't fork
+//         status = -errno;
+//         goto error;
+//
+//     } else if (pid == 0) {
+//         // Child
+//         setsid();
+//         printf("Child\n");
+//         int ret = execlp("/bin/sh","/bin/sh", "-c", command, (char *)NULL);
+//         if (ret < 0) {
+//             printf("ERROR %d %s\n", errno, strerror(errno));
+//             _exit(-errno);
+//         }
+//     } else {
+//         // Parent
+//         printf("Parent\n");
+//         while (waitpid(pid, &status, 0) == -1) {
+//             if (errno != EINTR) {       /* Error other than EINTR */
+//                 status = -1;
+//                 break;                  /* So exit loop */
+//             }
+//         }
+//     }
+//
+//     int flags = fcntl(master, F_GETFL);
+//     if (flags == -1) {
+//         status = -errno;
+//         goto error;
+//     }
+//     if(fcntl(master, F_SETFD, flags | O_NONBLOCK) == -1) {
+//         status = -errno;
+//         goto error;
+//     }
+//     if (!fd_set_cloexec(master)) {
+//         status=-errno;
+//         goto error;
+//     }
+//
+// //     pty_io_t *io = pty_io_init(process, read_cb);
+// //     if (!fd_duplicate(master, io->in) || !fd_duplicate(master, io->out)) {
+// //         status = -errno;
+// //         pty_io_free(io);
+// //         goto error;
+// //     }
+// //
+// //     process->pty = master;
+// //     process->pid = pid;
+// //     process->io = io;
+// //     process->exit_cb = exit_cb;
+// //     process->async.data = process;
+// //     uv_async_init(process->loop, &process->async, async_cb);
+// //     uv_thread_create(&process->tid, wait_cb, process);
+//     return 0;
+//
+//     error:
+//         printf("ERROR %d %s\n", errno, strerror(errno));
+//         close(master);
+//         uv_kill(pid, SIGKILL);
+//         waitpid(pid, NULL, 0);
+//         return status;
+// }
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int pty_sync_spawn(
+    hgobj gobj,
+    const char *command
+)
+{
+    int master, pid;
+
+    struct winsize size = {24, 80, 0, 0 };
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+
+    pid = forkpty(&master, NULL, NULL, &size);
+    if (pid < 0) {
+        // Can't fork
+        log_error(0,
+            "gobj",         "%s", gobj_full_name(gobj),
+            "function",     "%s", __FUNCTION__,
+            "msgset",       "%s", MSGSET_SYSTEM_ERROR,
+            "msg",          "%s", "forkpty() FAILED",
+            "errno",        "%d", errno,
+            "strerror",     "%s", strerror(errno),
+            NULL
+        );
+        return -1;
+
+    } else if (pid == 0) {
+        // Child
+        int ret = execlp("/bin/sh","/bin/sh", "-c", command, (char *)NULL);
+        if (ret < 0) {
+            log_error(0,
+                "gobj",         "%s", gobj_full_name(gobj),
+                "function",     "%s", __FUNCTION__,
+                "msgset",       "%s", MSGSET_SYSTEM_ERROR,
+                "msg",          "%s", "execlp() FAILED",
+                "command",      "%s", command,
+                "errno",        "%d", errno,
+                "strerror",     "%s", strerror(errno),
+                NULL
+            );
+            _exit(-errno);
+        }
+    } else {
+        // Parent
+        while(1) {
+            fd_set read_fd;
+            fd_set write_fd;
+            fd_set except_fd;
+
+            FD_ZERO(&read_fd);
+            FD_ZERO(&write_fd);
+            FD_ZERO(&except_fd);
+
+            FD_SET(master, &read_fd);
+            FD_SET(STDIN_FILENO, &read_fd);
+
+            select(master+1, &read_fd, &write_fd, &except_fd, NULL);
+
+            char input;
+            char output;
+
+            if (FD_ISSET(master, &read_fd)) {
+                if (read(master, &output, 1) != -1) {   // read from program
+                    write(STDOUT_FILENO, &output, 1);   // write to tty
+                } else {
+                    break;
+                }
+            }
+
+            if (FD_ISSET(STDIN_FILENO, &read_fd)) {
+                read(STDIN_FILENO, &input, 1);  // read from tty
+                write(master, &input, 1);       // write to program
+            }
+
+            int status;
+            if (waitpid(pid, &status, WNOHANG) && WIFEXITED(status)) {
+                exit(EXIT_SUCCESS);
+            }
+        }
+    }
+
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
 PRIVATE int edit_json(hgobj gobj, const char *path)
 {
     const char *editor = gobj_read_str_attr(gobj, "editor");
     char command[PATH_MAX];
     snprintf(command, sizeof(command), "%s %s", editor, path);
 
-    int ret = system(command);
-    return ret;
+    return pty_sync_spawn(gobj, command);
 }
 
 /***************************************************************************
@@ -1025,7 +1283,13 @@ PRIVATE int save_local_string(hgobj gobj, char *path, int pathsize, const char *
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE int save_local_base64(hgobj gobj, char *path, int pathsize, const char *name, json_t *jn_content)
+PRIVATE int save_local_base64(
+    hgobj gobj,
+    char *path,
+    int pathsize,
+    const char *name,
+    json_t *jn_content
+)
 {
     const char *homedir;
 

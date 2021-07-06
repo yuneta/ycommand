@@ -70,6 +70,7 @@ TARGET_LINK_LIBRARIES(ycommand
     lzma        # used by libunwind
     z rt m
     uuid
+    util
 )
 
 ##############################################

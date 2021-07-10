@@ -5,8 +5,7 @@
  *          Copyright (c) 2016 Niyamaka.
  *          All Rights Reserved.
  ****************************************************************************/
-#ifndef _C_EDITLINE_H
-#define _C_EDITLINE_H 1
+#pragma once
 
 #include <yuneta.h>
 
@@ -71,6 +70,4 @@ PUBLIC GCLASS *gclass_editline(void);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

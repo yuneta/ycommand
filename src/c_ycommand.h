@@ -7,8 +7,7 @@
  *          Copyright (c) 2016 Niyamaka.
  *          All Rights Reserved.
  ****************************************************************************/
-#ifndef _C_YCOMMAND_H
-#define _C_YCOMMAND_H 1
+#pragma once
 
 #include <yuneta.h>
 #include "c_editline.h"
@@ -40,6 +39,4 @@ PUBLIC GCLASS *gclass_ycommand(void);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

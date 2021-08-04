@@ -1369,6 +1369,10 @@ PRIVATE int ac_on_close(hgobj gobj, const char *event, json_t *kw, hgobj src)
 
     gobj_write_pointer_attr(gobj, "gobj_connector", 0);
     if(priv->verbose || priv->interactive) {
+        const char *comment = kw_get_str(kw, "comment", 0, 0);
+        if(comment) {
+            printf("\nIdentity card refused, cause: %s", comment);
+        }
         printf("\nDisconnected.\n");
     }
 

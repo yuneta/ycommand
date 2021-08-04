@@ -135,6 +135,9 @@ static struct argp_option options[] = {
 {0,                 0,      0,          0,      "Remote Service keys", 1},
 {"command",         'c',    "COMMAND",  0,      "Command.", 1},
 {"interactive",     'i',    0,          0,      "Interactive.", 1},
+{0,                 0,      0,          0,      "OAuth2 keys", 2},
+{"token_endpoint",  'e',    "ENDPOINT", 0,      "OAuth2 Token EndPoint", 2},
+{"user_id",         'x',    "USER_ID",  0,      "OAuth2 User Id", 2},
 {0,                 0,      0,          0,      "Connection keys", 4},
 {"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 4},
 {"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 4},
@@ -144,7 +147,7 @@ static struct argp_option options[] = {
 {"print",           'p',    0,          0,      "Print configuration.", 5},
 {"print-role",      'r',    0,          0,      "print the basic yuno's information"},
 {"verbose",         'l',    "LEVEL",    0,      "Verbose level.", 5},
-{"version",         'v',    0,          0,      "Print version.", 3},
+{"version",         'v',    0,          0,      "Print version.", 5},
 {"yuneta-version",  'V',    0,          0,      "Print yuneta version"},
 {0}
 };

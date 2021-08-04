@@ -132,23 +132,27 @@ static char args_doc[] = "";
  */
 static struct argp_option options[] = {
 /*-name-------------key-----arg---------flags---doc-----------------group */
-{0,                 0,      0,          0,      "Remote Service keys", 1},
-{"command",         'c',    "COMMAND",  0,      "Command.", 1},
-{"interactive",     'i',    0,          0,      "Interactive.", 1},
-{0,                 0,      0,          0,      "OAuth2 keys", 2},
-{"token_endpoint",  'e',    "ENDPOINT", 0,      "OAuth2 Token EndPoint", 2},
-{"user_id",         'x',    "USER_ID",  0,      "OAuth2 User Id", 2},
-{0,                 0,      0,          0,      "Connection keys", 4},
-{"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 4},
-{"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 4},
-{"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 4},
-{"service",         'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 4},
-{0,                 0,      0,          0,      "Local keys.", 5},
-{"print",           'p',    0,          0,      "Print configuration.", 5},
+{0,                 0,      0,          0,      "Remote Service keys", 10},
+{"command",         'c',    "COMMAND",  0,      "Command.", 10},
+{"interactive",     'i',    0,          0,      "Interactive.", 10},
+
+{0,                 0,      0,          0,      "OAuth2 keys", 20},
+{"token_endpoint",  'e',    "ENDPOINT", 0,      "OAuth2 Token EndPoint (get now a jwt)", 20},
+{"user_id",         'x',    "USER_ID",  0,      "OAuth2 User Id (get now a jwt)", 20},
+{"jwt",             'j',    "JWT",      0,      "Jwt (previously got it)", 21},
+
+{0,                 0,      0,          0,      "Connection keys", 40},
+{"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 40},
+{"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 40},
+{"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 40},
+{"service",         'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 40},
+
+{0,                 0,      0,          0,      "Local keys.", 50},
+{"print",           'p',    0,          0,      "Print configuration.", 50},
 {"print-role",      'r',    0,          0,      "print the basic yuno's information"},
-{"verbose",         'l',    "LEVEL",    0,      "Verbose level.", 5},
-{"version",         'v',    0,          0,      "Print version.", 5},
-{"yuneta-version",  'V',    0,          0,      "Print yuneta version"},
+{"verbose",         'l',    "LEVEL",    0,      "Verbose level.", 50},
+{"version",         'v',    0,          0,      "Print version.", 50},
+{"yuneta-version",  'V',    0,          0,      "Print yuneta version", 50},
 {0}
 };
 
@@ -172,6 +176,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
     struct arguments *arguments = state->input;
 
     switch (key) {
+    case 'e':
+        break;
+    case 'x':
+        break;
+
     case 'u':
         arguments->url = arg;
         break;

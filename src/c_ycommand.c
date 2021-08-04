@@ -1798,6 +1798,7 @@ PRIVATE const EVENT input_events[] = {
 
     {"EV_ON_OPEN",          0,  0,  0},
     {"EV_ON_CLOSE",         0,  0,  0},
+    {"EV_ON_ID_NAK",        0,  0,  0},
     // bottom input
     {"EV_TIMEOUT",          0,  0,  0},
     {"EV_STOPPED",          0,  0,  0},
@@ -1816,6 +1817,7 @@ PRIVATE const char *state_names[] = {
 PRIVATE EV_ACTION ST_DISCONNECTED[] = {
     {"EV_ON_OPEN",                  ac_on_open,                 "ST_CONNECTED"},
     {"EV_ON_CLOSE",                 ac_on_close,                0},
+    {"EV_ON_ID_NAK",                ac_on_close,                0},
     {"EV_STOPPED",                  0,                          0},
     {0,0,0}
 };

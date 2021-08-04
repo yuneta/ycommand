@@ -291,6 +291,9 @@ int main(int argc, char *argv[])
     arguments.yuno_role = "yuneta_agent";
     arguments.yuno_name = "";
     arguments.yuno_service = "__default_service__";
+    arguments.token_endpoint = "";
+    arguments.user_id = "";
+    arguments.jwt = "";
 
     /*
      *  Save args
@@ -322,7 +325,7 @@ int main(int argc, char *argv[])
      *  Put configuration
      */
     {
-        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s}}",
+        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,

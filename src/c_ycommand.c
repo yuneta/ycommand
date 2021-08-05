@@ -79,6 +79,7 @@ PRIVATE int cmd_connect(hgobj gobj);
 PRIVATE int do_command(hgobj gobj, const char *command);
 PRIVATE int clear_input_line(hgobj gobj);
 PRIVATE char *get_history_file(char *bf, int bfsize);
+PRIVATE int do_authenticate_task(hgobj gobj);
 
 /***************************************************************************
  *          Data: config, public data, private data
@@ -179,6 +180,8 @@ typedef struct _PRIVATE_DATA {
     hgobj gobj_connector;
     hgobj gobj_editline;
     grow_buffer_t bfinput;
+
+    hgobj gobj_postgres;
 } PRIVATE_DATA;
 
 
@@ -318,6 +321,7 @@ PRIVATE int mt_start(hgobj gobj)
     const char *token_endpoint = gobj_read_str_attr(gobj, "token_endpoint");
     const char *user_id = gobj_read_str_attr(gobj, "user_id");
     if(!empty_string(token_endpoint) && !empty_string(user_id)) {
+        do_authenticate_task(gobj);
     } else {
         cmd_connect(gobj);
     }
@@ -348,6 +352,29 @@ PRIVATE int mt_stop(hgobj gobj)
 
 
 
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int do_authenticate_task(hgobj gobj)
+{
+    /*-----------------------------*
+     *      Create the task
+     *-----------------------------*/
+    json_t *kw = json_pack("{s:s, s:s}",
+        "token_endpoint", gobj_read_str_attr(gobj, "token_endpoint"),
+        "user_id", gobj_read_str_attr(gobj, "user_id")
+    );
+
+    hgobj gobj_task = gobj_create_unique("task-authenticate", GCLASS_TASK_AUTHENTICATE, kw, gobj);
+    gobj_subscribe_event(gobj_task, "EV_ON_TOKEN", 0, gobj);
+    gobj_set_volatil(gobj_task, TRUE); // auto-destroy
+
+    /*-----------------------*
+     *      Start task
+     *-----------------------*/
+    return gobj_start(gobj_task);
+}
 
 PRIVATE char agent_insecure_config[]= "\
 {                                               \n\
@@ -1329,6 +1356,32 @@ PRIVATE int save_local_base64(
 
 
 /***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_on_token(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    int result = kw_get_int(kw, "result", -1, KW_REQUIRED);
+    if(result < 0) {
+        if(priv->verbose || priv->interactive) {
+            const char *comment = kw_get_str(kw, "comment", "", KW_REQUIRED);
+            printf("\n%s", comment);
+            printf("\nAbort.\n");
+        }
+        gobj_set_exit_code(-1);
+        gobj_shutdown();
+    } else {
+        const char *jwt = kw_get_str(kw, "jwt", "", KW_REQUIRED);
+        gobj_write_str_attr(gobj, "jwt", jwt);
+        cmd_connect(gobj);
+    }
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
  *  Execute batch of input parameters when the route is opened.
  ***************************************************************************/
 PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
@@ -1811,6 +1864,7 @@ PRIVATE const EVENT input_events[] = {
     {"EV_SCROLL_TOP",           0, 0, 0},
     {"EV_SCROLL_BOTTOM",        0, 0, 0},
 
+    {"EV_ON_TOKEN",         0,  0,  0},
     {"EV_ON_OPEN",          0,  0,  0},
     {"EV_ON_CLOSE",         0,  0,  0},
     {"EV_ON_ID_NAK",        0,  0,  0},
@@ -1830,6 +1884,7 @@ PRIVATE const char *state_names[] = {
 };
 
 PRIVATE EV_ACTION ST_DISCONNECTED[] = {
+    {"EV_ON_TOKEN",                 ac_on_token,                0},
     {"EV_ON_OPEN",                  ac_on_open,                 "ST_CONNECTED"},
     {"EV_ON_CLOSE",                 ac_on_close,                0},
     {"EV_ON_ID_NAK",                ac_on_close,                0},

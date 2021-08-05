@@ -9,7 +9,7 @@
  ****************************************************************************/
 #pragma once
 
-#include <yuneta.h>
+#include <yuneta_tls.h>
 #include "c_editline.h"
 
 #ifdef __cplusplus

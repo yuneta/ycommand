@@ -200,6 +200,7 @@ typedef struct _PRIVATE_DATA {
  *****************************************************************/
 PUBLIC void program_end(void)
 {
+    // TODO WARNING no restaura cuando se muere
     uv_tty_reset_mode();
 }
 

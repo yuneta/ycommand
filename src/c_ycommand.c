@@ -84,7 +84,8 @@ PRIVATE int do_authenticate_task(hgobj gobj);
 /***************************************************************************
  *          Data: config, public data, private data
  ***************************************************************************/
-volatile struct winsize winsz;
+PRIVATE int atexit_registered = 0; /* Register atexit just 1 time. */
+PRIVATE volatile struct winsize winsz;
 
 struct keytable_s {
     const char *dst_gobj;
@@ -144,8 +145,8 @@ SDATA (ASN_OCTET_STR,   "url",              0,          "ws://127.0.0.1:1991",  
 SDATA (ASN_OCTET_STR,   "yuno_name",        0,          "",             "Yuno name"),
 SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno role"),
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
-SDATA (ASN_OCTET_STR,   "token_endpoint",   0,          "",             "OAuth2 Token EndPoint (get now a jwt)"),
-SDATA (ASN_OCTET_STR,   "user_id",          0,          "",             "OAuth2 User Id (get now a jwt)"),
+SDATA (ASN_OCTET_STR,   "token_endpoint",   0,          "",             "OAuth2 Token EndPoint (interactive jwt)"),
+SDATA (ASN_OCTET_STR,   "user_id",          0,          "",             "OAuth2 User Id (interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "jwt",              0,          "",             "Jwt"),
 SDATA (ASN_POINTER,     "gobj_connector",   0,          0,              "connection gobj"),
 SDATA (ASN_OCTET_STR,   "display_mode",     0,          "table",        "Display mode: table or form"),
@@ -194,8 +195,16 @@ typedef struct _PRIVATE_DATA {
 
 
 
+/*****************************************************************
+ *
+ *****************************************************************/
+PUBLIC void program_end(void)
+{
+    uv_tty_reset_mode();
+}
+
 /***************************************************************************
- *      Framework Method create
+ *
  ***************************************************************************/
 PRIVATE void sig_handler(int sig)
 {
@@ -203,6 +212,10 @@ PRIVATE void sig_handler(int sig)
         ioctl(0, TIOCGWINSZ, &winsz);
     }
 }
+
+/*****************************************************************
+ *
+ *****************************************************************/
 PRIVATE void mt_create(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
@@ -210,6 +223,11 @@ PRIVATE void mt_create(hgobj gobj)
     ioctl(0, TIOCGWINSZ, &winsz);
     // Capture SIGWINCH
     signal(SIGWINCH, sig_handler);
+
+    if (!atexit_registered) {
+        atexit(program_end);
+        atexit_registered = 1;
+    }
 
     /*
      *  History filename, for editline

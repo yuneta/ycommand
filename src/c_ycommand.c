@@ -341,6 +341,11 @@ PRIVATE int mt_start(hgobj gobj)
     const char *token_endpoint = gobj_read_str_attr(gobj, "token_endpoint");
     const char *user_id = gobj_read_str_attr(gobj, "user_id");
     if(!empty_string(token_endpoint) && !empty_string(user_id)) {
+        /*
+         *  HACK if there are user_id and endpoint
+         *  then try to authenticate
+         *  else use default local connection
+         */
         do_authenticate_task(gobj);
     } else {
         cmd_connect(gobj);
@@ -381,9 +386,10 @@ PRIVATE int do_authenticate_task(hgobj gobj)
     /*-----------------------------*
      *      Create the task
      *-----------------------------*/
-    json_t *kw = json_pack("{s:s, s:s}",
+    json_t *kw = json_pack("{s:s, s:s, s:s}",
         "token_endpoint", gobj_read_str_attr(gobj, "token_endpoint"),
-        "user_id", gobj_read_str_attr(gobj, "user_id")
+        "user_id", gobj_read_str_attr(gobj, "user_id"),
+        "client_id", gobj_read_str_attr(gobj, "client_id")
     );
 
     hgobj gobj_task = gobj_create_unique("task-authenticate", GCLASS_TASK_AUTHENTICATE, kw, gobj);

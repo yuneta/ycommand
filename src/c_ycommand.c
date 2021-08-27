@@ -402,6 +402,9 @@ PRIVATE int do_authenticate_task(hgobj gobj)
     return gobj_start(gobj_task);
 }
 
+/***************************************************************************
+ *
+ ***************************************************************************/
 PRIVATE char agent_insecure_config[]= "\
 {                                               \n\
     'name': '(^^__url__^^)',                    \n\

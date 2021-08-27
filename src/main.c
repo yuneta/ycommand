@@ -376,7 +376,9 @@ int main(int argc, char *argv[])
         gobj_set_gclass_trace(GCLASS_IEVENT_CLI, "ievents2", TRUE);
         gobj_set_gclass_trace(GCLASS_IEVENT_CLI, "kw", TRUE);
     }
+
     if(arguments.verbose > 1) {
+        gobj_set_gclass_trace(GCLASS_TASK, "messages", TRUE);
         gobj_set_gclass_trace(GCLASS_TCP0, "traffic", TRUE);
     }
     if(arguments.verbose > 2) {

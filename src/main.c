@@ -27,6 +27,7 @@ struct arguments
 
     int print_role;
     char *url;
+    char *realm_name;
     char *yuno_role;
     char *yuno_name;
     char *yuno_service;
@@ -149,6 +150,7 @@ static struct argp_option options[] = {
 
 {0,                 0,      0,          0,      "Connection keys", 40},
 {"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 40},
+{"realm_name",      'Z',    "REALM",    0,      "Remote realm name (used for Authorized Party, 'azp' field of jwt). ", 40},
 {"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 40},
 {"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 40},
 {"service",         'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 40},
@@ -206,6 +208,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
         arguments->interactive = 1;
         break;
 
+    case 'Z':
+        arguments->realm_name = arg;
+        break;
     case 'O':
         arguments->yuno_role = arg;
         break;
@@ -293,6 +298,7 @@ int main(int argc, char *argv[])
     memset(&arguments, 0, sizeof(arguments));
     arguments.url = "ws://127.0.0.1:1991";
     arguments.command = "";
+    arguments.realm_name="";
     arguments.yuno_role = "yuneta_agent";
     arguments.yuno_name = "";
     arguments.yuno_service = "__default_service__";
@@ -331,7 +337,7 @@ int main(int argc, char *argv[])
      *  Put configuration
      */
     {
-        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
+        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
@@ -341,10 +347,12 @@ int main(int argc, char *argv[])
             "YCommand.user_passw", arguments.user_passw,
             "YCommand.jwt", arguments.jwt,
             "YCommand.url", arguments.url,
+            "YCommand.realm_name", arguments.realm_name,
             "YCommand.yuno_role", arguments.yuno_role,
             "YCommand.yuno_name", arguments.yuno_name,
             "YCommand.yuno_service", arguments.yuno_service
         );
+
         char *param1_ = json_dumps(kw_utility, JSON_COMPACT);
         if(!param1_) {
             printf("Some parameter is wrong\n");
@@ -387,6 +395,7 @@ int main(int argc, char *argv[])
     if(arguments.verbose > 1) {
         gobj_set_gclass_trace(GCLASS_TASK, "messages", TRUE);
         gobj_set_gclass_trace(GCLASS_TCP0, "traffic", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP1, "traffic", TRUE);
     }
     if(arguments.verbose > 2) {
         gobj_set_gobj_trace(0, "machine", TRUE, 0);

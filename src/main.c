@@ -153,7 +153,7 @@ static struct argp_option options[] = {
 {"realm_name",      'Z',    "REALM",    0,      "Remote realm name (used for Authorized Party, 'azp' field of jwt). ", 40},
 {"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 40},
 {"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 40},
-{"service",         'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 40},
+{"yuno_service",    'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 40}, // TODO chequea todos, estaba solo como 'service'
 
 {0,                 0,      0,          0,      "Local keys.", 50},
 {"print",           'p',    0,          0,      "Print configuration.", 50},
@@ -337,7 +337,8 @@ int main(int argc, char *argv[])
      *  Put configuration
      */
     {
-        json_t *kw_utility = json_pack("{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
+        json_t *kw_utility = json_pack(
+            "{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
@@ -401,6 +402,7 @@ int main(int argc, char *argv[])
         gobj_set_gobj_trace(0, "create_delete", TRUE, 0);
     }
     if(arguments.verbose > 3) {
+        gobj_set_gobj_trace(0, "create_delete2", TRUE, 0);
         gobj_set_gobj_trace(0, "ev_kw2", TRUE, 0);
     }
     if(arguments.verbose > 4) {

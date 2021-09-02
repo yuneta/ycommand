@@ -1397,7 +1397,7 @@ PRIVATE int ac_on_token(hgobj gobj, const char *event, json_t *kw, hgobj src)
     int result = kw_get_int(kw, "result", -1, KW_REQUIRED);
     if(result < 0) {
         if(priv->verbose || priv->interactive) {
-            const char *comment = kw_get_str(kw, "comment", "", KW_REQUIRED);
+            const char *comment = kw_get_str(kw, "comment", "", 0);
             printf("\n%s", comment);
             printf("\nAbort.\n");
         }

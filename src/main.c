@@ -391,6 +391,15 @@ int main(int argc, char *argv[])
     if(arguments.verbose > 0) {
         gobj_set_gclass_trace(GCLASS_IEVENT_CLI, "ievents2", TRUE);
         gobj_set_gclass_trace(GCLASS_IEVENT_CLI, "kw", TRUE);
+
+        gobj_set_gclass_trace(GCLASS_TCP0, "connections", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP1, "connections", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP_S0, "listen", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP_S1, "listen", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP_S0, "not-accepted", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP_S1, "not-accepted", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP_S0, "accepted", TRUE);
+        gobj_set_gclass_trace(GCLASS_TCP_S1, "accepted", TRUE);
     }
 
     if(arguments.verbose > 1) {

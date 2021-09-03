@@ -1436,7 +1436,7 @@ PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
         if(!empty_string(command)) {
             do_command(gobj, command);
         } else {
-            printf("Type 'quit' to exit, 'history' to show history\n");
+            printf("Type 'quit' for exit, 'help' for help, 'history' for show history\n");
             clear_input_line(gobj);
         }
     } else {

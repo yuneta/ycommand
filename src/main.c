@@ -56,7 +56,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state);
 #define APP_NAME        "ycommand"
 #define APP_DOC         "Yuneta Command"
 
-#define APP_VERSION     "4.15.8"
+#define APP_VERSION     "4.15.9"
 #define APP_DATETIME    __DATE__ " " __TIME__
 #define APP_SUPPORT     "<niyamaka at yuneta.io>"
 
@@ -148,12 +148,12 @@ static struct argp_option options[] = {
 {"user_passw",      'X',    "USER_PASSW",0,     "OAuth2 User Password (get now a jwt)", 20},
 {"jwt",             'j',    "JWT",      0,      "Jwt (previously got it)", 21},
 
-{0,                 0,      0,          0,      "Connection keys", 40},
-{"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 40},
-{"realm_name",      'Z',    "REALM",    0,      "Remote realm name (used for Authorized Party, 'azp' field of jwt). ", 40},
-{"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 40},
-{"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 40},
-{"yuno_service",    'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 40}, // TODO chequea todos, estaba solo como 'service'
+{0,                 0,      0,          0,      "Connection keys", 30},
+{"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 30},
+{"realm_name",      'Z',    "REALM",    0,      "Remote realm name (used for Authorized Party, 'azp' field of jwt). ", 30},
+{"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 30},
+{"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 30},
+{"yuno_service",    'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 30}, // TODO chequea todos, estaba solo como 'service'
 
 {0,                 0,      0,          0,      "Local keys.", 50},
 {"print",           'p',    0,          0,      "Print configuration.", 50},
@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
     memset(&arguments, 0, sizeof(arguments));
     arguments.url = "ws://127.0.0.1:1991";
     arguments.command = "";
-    arguments.realm_name="";
+    arguments.realm_name = "";
     arguments.yuno_role = "yuneta_agent";
     arguments.yuno_name = "";
     arguments.yuno_service = "__default_service__";

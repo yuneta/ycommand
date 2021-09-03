@@ -79,7 +79,7 @@ PRIVATE char fixed_config[]= "\
 PRIVATE char variable_config[]= "\
 {                                                                   \n\
     'environment': {                                                \n\
-        'use_system_memory': true,                                  \n\
+        'use_system_memory': false,                                  \n\
         'log_gbmem_info': true,                                     \n\
         'MEM_MIN_BLOCK': 512,                                       \n\
         'MEM_MAX_BLOCK': 209715200,             #^^  200*M          \n\
@@ -380,8 +380,9 @@ int main(int argc, char *argv[])
      *  To trace memory
      *------------------------------------------------*/
 #ifdef DEBUG
-    static uint32_t mem_list[] = {0};
-    gbmem_trace_alloc_free(0, mem_list);
+    BOOL debug_memory = 0;
+    static uint32_t mem_list[] = {14740, 0};
+    gbmem_trace_alloc_free(debug_memory, mem_list);
 #endif
 
     int log_handler_options = -1;
@@ -425,6 +426,9 @@ int main(int argc, char *argv[])
     }
     gobj_set_gclass_no_trace(GCLASS_TIMER, "machine", TRUE);
 
+    if(debug_memory) {
+        log_handler_options &= ~LOG_HND_OPT_BEATIFUL_JSON;
+    }
     static char my_variable_config[16*1024];
     snprintf(my_variable_config, sizeof(my_variable_config), variable_config, log_handler_options);
 

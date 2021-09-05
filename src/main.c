@@ -27,13 +27,15 @@ struct arguments
 
     int print_role;
     char *url;
+    char *auth_owner;
     char *realm_name;
     char *yuno_role;
     char *yuno_name;
     char *yuno_service;
     char *command;
 
-    char *token_endpoint;
+    char *auth_system;
+    char *auth_url;
     char *user_id;
     char *user_passw;
     char *jwt;
@@ -143,7 +145,9 @@ static struct argp_option options[] = {
 {"interactive",     'i',    0,          0,      "Interactive.", 10},
 
 {0,                 0,      0,          0,      "OAuth2 keys", 20},
-{"token_endpoint",  'e',    "ENDPOINT", 0,      "OAuth2 Token EndPoint (get now a jwt)", 20},
+{"auth_system",     'K',    "AUTH_SYSTEM",0,    "OAuth2 System (default: keycloak, get now a jwt)", 20},
+{"auth_url",        'k',    "AUTH_URL", 0,      "OAuth2 Server Url (get now a jwt)", 20},
+{"auth_owner",      'w',    "AUTH_OWNER",0,     "OAuth2 Owner (get now a jwt)", 20},
 {"user_id",         'x',    "USER_ID",  0,      "OAuth2 User Id (get now a jwt)", 20},
 {"user_passw",      'X',    "USER_PASSW",0,     "OAuth2 User Password (get now a jwt)", 20},
 {"jwt",             'j',    "JWT",      0,      "Jwt (previously got it)", 21},
@@ -184,9 +188,16 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
     struct arguments *arguments = state->input;
 
     switch (key) {
-    case 'e':
-        arguments->token_endpoint = arg;
+    case 'K':
+        arguments->auth_system = arg;
         break;
+    case 'k':
+        arguments->auth_url = arg;
+        break;
+    case 'w':
+        arguments->auth_owner = arg;
+        break;
+
     case 'x':
         arguments->user_id = arg;
         break;
@@ -302,7 +313,9 @@ int main(int argc, char *argv[])
     arguments.yuno_role = "yuneta_agent";
     arguments.yuno_name = "";
     arguments.yuno_service = "__default_service__";
-    arguments.token_endpoint = "";
+    arguments.auth_system = "keycloak";
+    arguments.auth_url = "";
+    arguments.auth_owner = "";
     arguments.user_id = "";
     arguments.user_passw = "";
     arguments.jwt = "";
@@ -338,12 +351,14 @@ int main(int argc, char *argv[])
      */
     {
         json_t *kw_utility = json_pack(
-            "{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
+            "{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
             "YCommand.interactive", arguments.interactive,
-            "YCommand.token_endpoint", arguments.token_endpoint,
+            "YCommand.auth_system", arguments.auth_system,
+            "YCommand.auth_url", arguments.auth_url,
+            "YCommand.auth_owner", arguments.auth_owner,
             "YCommand.user_id", arguments.user_id,
             "YCommand.user_passw", arguments.user_passw,
             "YCommand.jwt", arguments.jwt,

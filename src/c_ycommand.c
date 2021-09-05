@@ -146,7 +146,9 @@ SDATA (ASN_OCTET_STR,   "realm_name",       0,          "",             "Realm n
 SDATA (ASN_OCTET_STR,   "yuno_name",        0,          "",             "Yuno name"),
 SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno role"),
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
-SDATA (ASN_OCTET_STR,   "token_endpoint",   0,          "",             "OAuth2 Token EndPoint (interactive jwt)"),
+SDATA (ASN_OCTET_STR,   "auth_system",      0,          "",             "OAuth2 System (interactive jwt)"),
+SDATA (ASN_OCTET_STR,   "auth_url",         0,          "",             "OAuth2 Server Url (interactive jwt)"),
+SDATA (ASN_OCTET_STR,   "auth_owner",       0,          "",             "OAuth2 Owner (interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "user_id",          0,          "",             "OAuth2 User Id (interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "user_passw",       0,          "",             "OAuth2 User password (interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "client_id",        0,          "",             "OAuth2 client id (azp - authorized party ) (interactive jwt)"), // TODO quitalo
@@ -340,9 +342,9 @@ PRIVATE int mt_start(hgobj gobj)
 
     gobj_start(priv->gobj_editline);
 
-    const char *token_endpoint = gobj_read_str_attr(gobj, "token_endpoint");
+    const char *auth_url = gobj_read_str_attr(gobj, "auth_url");
     const char *user_id = gobj_read_str_attr(gobj, "user_id");
-    if(!empty_string(token_endpoint) && !empty_string(user_id)) {
+    if(!empty_string(auth_url) && !empty_string(user_id)) {
         /*
          *  HACK if there are user_id and endpoint
          *  then try to authenticate
@@ -388,8 +390,10 @@ PRIVATE int do_authenticate_task(hgobj gobj)
     /*-----------------------------*
      *      Create the task
      *-----------------------------*/
-    json_t *kw = json_pack("{s:s, s:s, s:s, s:s}",
-        "token_endpoint", gobj_read_str_attr(gobj, "token_endpoint"), // contains the owner
+    json_t *kw = json_pack("{s:s, s:s, s:s, s:s, s:s, s:s}",
+        "auth_system", gobj_read_str_attr(gobj, "auth_system"),
+        "auth_url", gobj_read_str_attr(gobj, "auth_url"),
+        "auth_owner", gobj_read_str_attr(gobj, "auth_owner"),
         "user_id", gobj_read_str_attr(gobj, "user_id"),
         "user_passw", gobj_read_str_attr(gobj, "user_passw"),
         "azp", gobj_read_str_attr(gobj, "realm_name")   // Our realm is the Authorized Party in jwt

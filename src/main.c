@@ -416,6 +416,7 @@ int main(int argc, char *argv[])
         gobj_set_gclass_trace(GCLASS_TCP_S1, "not-accepted", TRUE);
         gobj_set_gclass_trace(GCLASS_TCP_S0, "accepted", TRUE);
         gobj_set_gclass_trace(GCLASS_TCP_S1, "accepted", TRUE);
+        gobj_set_gclass_trace(GCLASS_PROT_HTTP_CLI, "traffic", TRUE);
     }
 
     if(arguments.verbose > 1) {

@@ -1410,8 +1410,7 @@ PRIVATE int ac_on_token(hgobj gobj, const char *event, json_t *kw, hgobj src)
     } else {
         const char *jwt = kw_get_str(kw, "jwt", "", KW_REQUIRED);
         gobj_write_str_attr(gobj, "jwt", jwt);
-        // TODO chequea el logout; repon la conexión
-        // cmd_connect(gobj);
+        cmd_connect(gobj);
     }
 
     KW_DECREF(kw);

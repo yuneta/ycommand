@@ -28,7 +28,7 @@ struct arguments
     int print_role;
     char *url;
     char *auth_owner;
-    char *realm_name;
+    char *realm_role;
     char *yuno_role;
     char *yuno_name;
     char *yuno_service;
@@ -154,7 +154,7 @@ static struct argp_option options[] = {
 
 {0,                 0,      0,          0,      "Connection keys", 30},
 {"url",             'u',    "URL",      0,      "Url to connect (default 'ws://127.0.0.1:1991').", 30},
-{"realm_name",      'Z',    "REALM",    0,      "Remote realm name (used for Authorized Party, 'azp' field of jwt). ", 30},
+{"realm_role",      'Z',    "REALM",    0,      "Realm role (used for Authorized Party, 'azp' field of jwt, client_id in keycloak)", 30},
 {"yuno_role",       'O',    "ROLE",     0,      "Remote yuno role. Default: 'yuneta_agent'", 30},
 {"yuno_name",       'o',    "NAME",     0,      "Remote yuno name. Default: ''", 30},
 {"yuno_service",    'S',    "SERVICE",  0,      "Remote yuno service. Default: '__default_service__'", 30}, // TODO chequea todos, estaba solo como 'service'
@@ -220,7 +220,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
         break;
 
     case 'Z':
-        arguments->realm_name = arg;
+        arguments->realm_role = arg;
         break;
     case 'O':
         arguments->yuno_role = arg;
@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
     memset(&arguments, 0, sizeof(arguments));
     arguments.url = "ws://127.0.0.1:1991";
     arguments.command = "";
-    arguments.realm_name = "";
+    arguments.realm_role = "";
     arguments.yuno_role = "yuneta_agent";
     arguments.yuno_name = "";
     arguments.yuno_service = "__default_service__";
@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
             "YCommand.user_passw", arguments.user_passw,
             "YCommand.jwt", arguments.jwt,
             "YCommand.url", arguments.url,
-            "YCommand.realm_name", arguments.realm_name,
+            "YCommand.realm_role", arguments.realm_role,
             "YCommand.yuno_role", arguments.yuno_role,
             "YCommand.yuno_name", arguments.yuno_name,
             "YCommand.yuno_service", arguments.yuno_service

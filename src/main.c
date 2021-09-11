@@ -442,9 +442,11 @@ int main(int argc, char *argv[])
     }
     gobj_set_gclass_no_trace(GCLASS_TIMER, "machine", TRUE);
 
+#ifdef DEBUG
     if(debug_memory) {
         log_handler_options &= ~LOG_HND_OPT_BEATIFUL_JSON;
     }
+#endif
     static char my_variable_config[16*1024];
     snprintf(my_variable_config, sizeof(my_variable_config), variable_config, log_handler_options);
 

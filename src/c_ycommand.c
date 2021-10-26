@@ -20,49 +20,57 @@
 /***************************************************************************
  *              Constants
  ***************************************************************************/
-enum {
-    CTRL_A = 1,
-    CTRL_B = 2,
-    CTRL_C = 3,
-    CTRL_D = 4,
-    CTRL_E = 5,
-    CTRL_F = 6,
-    CTRL_H = 8,
-    BACKSPACE =  127,
-    TAB = 9,
-    CTRL_K = 11,
-    ENTER = 13,
-    CTRL_N = 14,
-    CTRL_P = 16,
-    CTRL_T = 20,
-    CTRL_U = 21,
-    CTRL_W = 23,
-    CTRL_Y = 25,
-    ESCAPE = 27,
+#define CTRL_A  {1}
+#define CTRL_B  {2}
+#define CTRL_C  {3}
 
-    MKEY_START =         0x485B1B, // .[H
-    MKEY_PREV_PAGE =     0x7E355B1B, // .[5~
-    MKEY_NEXT_PAGE =     0x7E365B1B, // .[6~
-    MKEY_END =           0x465B1B, // .[F
-    MKEY_UP =            0x415B1B, // .[A
-    MKEY_DOWN =          0x425B1B, // .[B
-    MKEY_LEFT =          0x445B1B, // .[D
-    MKEY_RIGHT =         0x435B1B, // .[C
+#define CTRL_D  {4}
+#define CTRL_E  {5}
+#define CTRL_F  {6}
+#define CTRL_H  {8}
+#define BACKSPACE {0x7F}
+#define TAB     {9}
+#define CTRL_K  {11}
+#define ENTER   {13}
+#define CTRL_N  {14}
+#define CTRL_P  {16}
+#define CTRL_T  {20}
+#define CTRL_U  {21}
+#define CTRL_W  {23}
+#define CTRL_Y  {25}
+#define ESCAPE  {27}
 
-    MKEY_START2 =        0x484F1B, // .[H
-    MKEY_END2 =          0x464F1B, // .[F
-    MKEY_UP2 =           0x414F1B, // .OA
-    MKEY_DOWN2 =         0x424F1B, // .OB
-    MKEY_LEFT2 =         0x444F1B, // .OD
-    MKEY_RIGHT2 =        0x434F1B, // .OC
+#define MKEY_START              {0x1B, 0x5B, 0x48} // .[H
+#define MKEY_END                {0x1B, 0x5B, 0x46} // .[F
+#define MKEY_UP                 {0x1B, 0x5B, 0x41} // .[A
+#define MKEY_DOWN               {0x1B, 0x5B, 0x42} // .[B
+#define MKEY_LEFT               {0x1B, 0x5B, 0x44} // .[D
+#define MKEY_RIGHT              {0x1B, 0x5B, 0x43} // .[C
 
-    MKEY_INS =           0x7E325B1B, // .[2~
-    MKEY_DEL =           0x7E335B1B, // .[3~
-    MKEY_ALT_START =     0x48333B315B1B, // .[1;3H
-    MKEY_ALT_PREV_PAGE = 0x7E333B355B1B, // .[5;3~
-    MKEY_ALT_NEXT_PAGE = 0x7E333B365B1B, // .[6;3~
-    MKEY_ALT_END =       0x46333B315B1B, // .[1;3F
-};
+#define MKEY_PREV_PAGE          {0x1B, 0x5B, 0x35, 0x7E} // .[5~
+#define MKEY_NEXT_PAGE          {0x1B, 0x5B, 0x36, 0x7E} // .[6~
+#define MKEY_INS                {0x1B, 0x5B, 0x32, 0x7E} // .[2~
+#define MKEY_DEL                {0x1B, 0x5B, 0x33, 0x7E} // .[3~
+
+#define MKEY_START2             {0x1B, 0x4F, 0x48} // .[H
+#define MKEY_END2               {0x1B, 0x4F, 0x46} // .[F
+#define MKEY_UP2                {0x1B, 0x4F, 0x41} // .OA
+#define MKEY_DOWN2              {0x1B, 0x4F, 0x42} // .OB
+#define MKEY_LEFT2              {0x1B, 0x4F, 0x44} // .OD
+#define MKEY_RIGHT2             {0x1B, 0x4F, 0x43} // .OC
+
+#define MKEY_ALT_START          {0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x48} // .[1;3H
+#define MKEY_ALT_PREV_PAGE      {0x1B, 0x5B, 0x35, 0x3B, 0x33, 0x7E} // .[5;3~
+#define MKEY_ALT_NEXT_PAGE      {0x1B, 0x5B, 0x36, 0x3B, 0x33, 0x7E} // .[6;3~
+#define MKEY_ALT_END            {0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x46} // .[1;3F
+
+#define MKEY_CTRL_START         {0x1B, 0x5B, 0x31, 0x3B, 0x35, 0x48} // .[1;5H
+#define MKEY_CTRL_END           {0x1B, 0x5B, 0x31, 0x3B, 0x35, 0x46} // .[1;5F
+
+#define MKEY_ALT_LEFT           {0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x44} // .[1;3D
+#define MKEY_CTRL_LEFT          {0x1B, 0x5B, 0x31, 0x3B, 0x35, 0x44} // .[1;5D
+#define MKEY_ALT_RIGHT          {0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x43} // .[1;3C
+#define MKEY_CTRL_RIGHT         {0x1B, 0x5B, 0x31, 0x3B, 0x35, 0x43} // .[1;5C
 
 /***************************************************************************
  *              Structures
@@ -90,7 +98,7 @@ PRIVATE volatile struct winsize winsz;
 struct keytable_s {
     const char *dst_gobj;
     const char *event;
-    unsigned long long key;
+    uint8_t keycode[8+1];
 } keytable[] = {
 {"editline",    "EV_EDITLINE_MOVE_START",       CTRL_A},
 {"editline",    "EV_EDITLINE_MOVE_START",       MKEY_START},
@@ -181,7 +189,6 @@ typedef struct _PRIVATE_DATA {
     uv_tty_t uv_tty;
     char uv_handler_active;
     char uv_read_active;
-    char uv_req_shutdown_active;
     hgobj gobj_connector;
     hgobj gobj_editline;
     grow_buffer_t bfinput;
@@ -290,15 +297,6 @@ PRIVATE void mt_destroy(hgobj gobj)
             "function",     "%s", __FUNCTION__,
             "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
             "msg",          "%s", "UV req_read ACTIVE",
-            NULL
-        );
-    }
-    if(priv->uv_req_shutdown_active) {
-        log_error(0,
-            "gobj",         "%s", gobj_full_name(gobj),
-            "function",     "%s", __FUNCTION__,
-            "msgset",       "%s", MSGSET_OPERATIONAL_ERROR,
-            "msg",          "%s", "UV req_shutdown ACTIVE",
             NULL
         );
     }
@@ -564,10 +562,10 @@ PRIVATE int cmd_connect(hgobj gobj)
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE struct keytable_s *event_by_key(int kb)
+PRIVATE struct keytable_s *event_by_key(uint8_t kb[8])
 {
     for(int i=0; keytable[i].event!=0; i++) {
-        if(kb == keytable[i].key) {
+        if(memcmp(kb, keytable[i].keycode, strlen((const char *)keytable[i].keycode))==0) {
             return &keytable[i];
         }
     }
@@ -670,16 +668,22 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
             return;
         }
 
-        unsigned char b[8];
+        uint8_t b[8];
         memset(b, 0, sizeof(b));
         memmove(b, buf->base, nread);
-        struct keytable_s *kt = event_by_key(*((uint64_t *)b));
+        struct keytable_s *kt = event_by_key(b);
+        if(!kt) {
+            return;
+        }
 
-        if(kt && !empty_string(kt->event)) {
-            if(strcmp(kt->dst_gobj, "screen")==0) {
-                gobj_send_event(gobj, kt->event, 0, gobj);
+        const char *dst = kt->dst_gobj;
+        const char *event = kt->event;
+
+        if(!empty_string(event)) {
+            if(strcmp(dst, "screen")==0) {
+                gobj_send_event(gobj, event, 0, gobj);
             } else {
-                gobj_send_event(priv->gobj_editline, kt->event, 0, gobj);
+                gobj_send_event(priv->gobj_editline, event, 0, gobj);
             }
         }
 

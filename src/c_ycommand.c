@@ -172,10 +172,10 @@ SDATA_END()
  *      GClass trace levels
  *---------------------------------------------*/
 enum {
-    TRACE_MESSAGES = 0x0001,
+    TRACE_KB        = 0x0001,
 };
 PRIVATE const trace_level_t s_user_trace_level[16] = {
-{"messages",        "Trace messages"},
+{"trace-kb",            "Trace keyboard codes"},
 {0, 0},
 };
 
@@ -193,7 +193,8 @@ typedef struct _PRIVATE_DATA {
     hgobj gobj_editline;
     grow_buffer_t bfinput;
 
-    hgobj gobj_postgres;
+    BOOL on_mirror_tty;
+    char mirror_tty_name[NAME_MAX];
 } PRIVATE_DATA;
 
 
@@ -537,9 +538,9 @@ PRIVATE int cmd_connect(hgobj gobj)
     char schema[20]={0}, host[120]={0}, port[40]={0};
     parse_http_url(url, schema, sizeof(schema), host, sizeof(host), port, sizeof(port), FALSE);
 
-    char *agent_config = agent_insecure_config;
-    if(strcmp(schema, "wss")==0) {
-        agent_config = agent_secure_config;
+    char *agent_config = agent_secure_config; // Prevalence
+    if(strcmp(schema, "ws")==0) {
+        agent_config = agent_insecure_config;
     }
 
     hgobj gobj_remote_agent = gobj_create_tree(
@@ -611,7 +612,7 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
     if(gobj_trace_level(gobj) & TRACE_UV) {
-        trace_msg("<<< on_read_cb %d tcp p=%p",
+        trace_msg("<<< on_read_cb %d tty p=%p",
             nread,
             &priv->uv_tty
         );
@@ -653,7 +654,7 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         return;
     }
 
-    if(gobj_trace_level(gobj) & TRACE_UV) {
+    if(gobj_trace_level(gobj) & (TRACE_UV|TRACE_KB)) {
         log_debug_dump(
             0,
             buf->base,
@@ -662,36 +663,70 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         );
     }
 
-    if((buf->base[0] <= 0x1B && nread <= 8) || buf->base[0] == 0x7F) {
-        if(buf->base[0] == 3) {
-            gobj_stop(gobj);
+    if(buf->base[0] == 3) {
+        if(!priv->on_mirror_tty) {
+            gobj_shutdown();
             return;
         }
+    }
+    if(nread > 8) {
+        // It's must be the mouse cursor
+        char *p = strchr(buf->base+1, 0x1B);
+        if(p) {
+            *p = 0;
+            nread = (int)(p - buf->base);
+            if(gobj_trace_level(gobj) & (TRACE_UV|TRACE_KB)) {
+                log_debug_dump(
+                    0,
+                    buf->base,
+                    nread,
+                    "REDUCE!"
+                );
+            }
+        }
+    }
+    uint8_t b[8];
+    memset(b, 0, sizeof(b));
+    memmove(b, buf->base, MIN(8, nread));
 
-        uint8_t b[8];
-        memset(b, 0, sizeof(b));
-        memmove(b, buf->base, nread);
+    do {
+
+        if(priv->on_mirror_tty) {
+            hgobj gobj_cmd = gobj_read_pointer_attr(gobj, "gobj_connector");
+
+            GBUFFER *gbuf = gbuf_create(nread, nread, 0, 0);
+            gbuf_append(gbuf, buf->base, nread);
+            GBUFFER *gbuf_content64 = gbuf_encodebase64(gbuf);
+            char *content64 = gbuf_cur_rd_pointer(gbuf_content64);
+
+            json_t *kw_command = json_pack("{s:s, s:s}",
+                "name", priv->mirror_tty_name,
+                "content64", content64
+            );
+
+            json_decref(gobj_command(gobj_cmd, "write-tty", kw_command, gobj));
+
+            GBUF_DECREF(gbuf_content64);
+            break;
+        }
+
         struct keytable_s *kt = event_by_key(b);
-        if(!kt) {
-            return;
-        }
+        if(kt) {
+            const char *dst = kt->dst_gobj;
+            const char *event = kt->event;
 
-        const char *dst = kt->dst_gobj;
-        const char *event = kt->event;
-
-        if(!empty_string(event)) {
-            if(strcmp(dst, "screen")==0) {
-                gobj_send_event(gobj, event, 0, gobj);
-            } else {
+            if(strcmp(dst, "editline")==0) {
                 gobj_send_event(priv->gobj_editline, event, 0, gobj);
+            } else {
+                gobj_send_event(gobj, event, 0, gobj);
+            }
+        } else {
+            for(int i=0; i<nread; i++) {
+                process_key(gobj, buf->base[i]);
             }
         }
 
-    } else {
-        for(int i=0; i<nread; i++) {
-            process_key(gobj, buf->base[i]);
-        }
-    }
+    } while(0);
 }
 
 /***************************************************************************
@@ -732,7 +767,7 @@ PRIVATE void do_close(hgobj gobj)
     }
 
     if(gobj_trace_level(gobj) & TRACE_UV) {
-        trace_msg(">>> uv_close tcp p=%p", &priv->uv_tty);
+        trace_msg(">>> uv_close tty p=%p", &priv->uv_tty);
     }
     uv_close((uv_handle_t *)&priv->uv_tty, on_close_cb);
 }
@@ -993,10 +1028,11 @@ PRIVATE int clear_input_line(hgobj gobj)
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
     printf("\n");
-
-    json_t *kw_line = json_object();
-    json_object_set_new(kw_line, "text", json_string(""));
-    gobj_send_event(priv->gobj_editline, "EV_SETTEXT", kw_line, gobj);
+    if(!priv->on_mirror_tty) {
+        json_t *kw_line = json_object();
+        json_object_set_new(kw_line, "text", json_string(""));
+        gobj_send_event(priv->gobj_editline, "EV_SETTEXT", kw_line, gobj);
+    }
 
     return 0;
 }
@@ -1283,7 +1319,7 @@ PRIVATE int ac_on_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
         if(!empty_string(command)) {
             do_command(gobj, command);
         } else {
-            printf("Type 'quit' for exit, 'help' for help, 'history' for show history\n");
+            printf("Type Ctrl+c for exit, 'help' for help, 'history' for show history\n");
             clear_input_line(gobj);
         }
     } else {
@@ -1339,6 +1375,12 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         KW_DECREF(kw);
         return 0;
     }
+    if(priv->on_mirror_tty) {
+        KW_DECREF(kw_input_command);
+        KW_DECREF(kw);
+        return 0;
+    }
+
     if(strcasecmp(command, "exit")==0 || strcasecmp(command, "quit")==0) {
         gobj_stop(gobj);
         KW_DECREF(kw_input_command);
@@ -1368,6 +1410,16 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         xcmd++;
         kw_set_subdict_value(kw_command, "__md_iev__", "display_mode", json_string("form"));
     }
+    if(strstr(xcmd, "command=open-console")) {
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+        int cx = w.ws_col;
+        int cy = w.ws_row;
+        kw_set_dict_value(kw_command, "cx", json_integer(cx));
+        kw_set_dict_value(kw_command, "cy", json_integer(cy));
+    }
+
     json_t *webix = 0;
     if(priv->gobj_connector) {
         webix = gobj_command(priv->gobj_connector, xcmd, kw_command, gobj);
@@ -1712,6 +1764,80 @@ PRIVATE int ac_screen_ctrl(hgobj gobj, const char *event, json_t *kw, hgobj src)
 /***************************************************************************
  *
  ***************************************************************************/
+PRIVATE int ac_tty_mirror_open(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    json_t *jn_data = kw_get_dict(kw, "data", 0, KW_REQUIRED);
+    const char *tty_name = kw_get_str(jn_data, "name", "", KW_REQUIRED);
+    snprintf(priv->mirror_tty_name, sizeof(priv->mirror_tty_name), "%s", tty_name);
+    priv->on_mirror_tty = TRUE;
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_tty_mirror_close(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    snprintf(priv->mirror_tty_name, sizeof(priv->mirror_tty_name), "%s", "");
+    priv->on_mirror_tty = FALSE;
+    clear_input_line(gobj);
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE int ac_tty_mirror_data(hgobj gobj, const char *event, json_t *kw, hgobj src)
+{
+    const char *agent_name = gobj_name(gobj_read_pointer_attr(src, "user_data"));
+
+    json_t *jn_data = kw_get_dict(kw, "data", 0, KW_REQUIRED);
+    if(jn_data) {
+        const char *tty_name = kw_get_str(jn_data, "name", 0, 0);
+        char mirror_tty_name[NAME_MAX];
+        snprintf(mirror_tty_name, sizeof(mirror_tty_name), "%s(%s)", agent_name, tty_name);
+
+        const char *content64 = kw_get_str(jn_data, "content64", 0, 0);
+        if(empty_string(content64)) {
+            log_error(0,
+                "gobj",         "%s", gobj_full_name(gobj),
+                "function",     "%s", __FUNCTION__,
+                "msgset",       "%s", MSGSET_INTERNAL_ERROR,
+                "msg",          "%s", "content64 empty",
+                NULL
+            );
+            JSON_DECREF(jn_data);
+            JSON_DECREF(kw);
+            return -1;
+        }
+
+        GBUFFER *gbuf = gbuf_decodebase64string(content64);
+        char *p = gbuf_cur_rd_pointer(gbuf);
+        int len = gbuf_leftbytes(gbuf);
+
+        if(gobj_trace_level(gobj) & TRACE_KB) {
+            log_debug_dump(0, p, len,  "write_tty");
+        }
+        fwrite(p, len, 1, stdout);
+        fflush(stdout);
+        GBUF_DECREF(gbuf);
+    }
+
+    KW_DECREF(kw);
+    return 0;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
 PRIVATE int ac_timeout(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
     KW_DECREF(kw);
@@ -1732,6 +1858,9 @@ PRIVATE const EVENT input_events[] = {
     {"EV_READ_JSON",            EVF_PUBLIC_EVENT, 0, 0},
     {"EV_READ_FILE",            EVF_PUBLIC_EVENT, 0, 0},
     {"EV_READ_BINARY_FILE",     EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_TTY_OPEN",             EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_TTY_CLOSE",            EVF_PUBLIC_EVENT, 0, 0},
+    {"EV_TTY_DATA",             EVF_PUBLIC_EVENT, 0, 0},
 
     {"EV_CLRSCR",               0, 0, 0},
 
@@ -1780,6 +1909,9 @@ PRIVATE EV_ACTION ST_CONNECTED[] = {
     {"EV_READ_JSON",                ac_read_json,               0},
     {"EV_READ_FILE",                ac_read_file,               0},
     {"EV_READ_BINARY_FILE",         ac_read_binary_file,        0},
+    {"EV_TTY_OPEN",                 ac_tty_mirror_open,         0},
+    {"EV_TTY_CLOSE",                ac_tty_mirror_close,        0},
+    {"EV_TTY_DATA",                 ac_tty_mirror_data,         0},
     {"EV_CLRSCR",                   ac_screen_ctrl,             0},
     {"EV_SCROLL_PAGE_UP",           ac_screen_ctrl,             0},
     {"EV_SCROLL_PAGE_DOWN",         ac_screen_ctrl,             0},

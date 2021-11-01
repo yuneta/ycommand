@@ -439,6 +439,7 @@ int main(int argc, char *argv[])
     if(arguments.verbose > 5) {
         gobj_set_gobj_trace(0, "start_stop", TRUE, 0);
         gobj_set_gobj_trace(0, "libuv", TRUE, 0);
+        gobj_set_gclass_trace(GCLASS_YCOMMAND, "trace-kb", TRUE);
     }
     gobj_set_gclass_no_trace(GCLASS_TIMER, "machine", TRUE);
 

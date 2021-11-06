@@ -195,6 +195,7 @@ typedef struct _PRIVATE_DATA {
 
     BOOL on_mirror_tty;
     char mirror_tty_name[NAME_MAX];
+    char mirror_tty_uuid[NAME_MAX];
 } PRIVATE_DATA;
 
 
@@ -699,8 +700,9 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
             GBUFFER *gbuf_content64 = gbuf_encodebase64(gbuf);
             char *content64 = gbuf_cur_rd_pointer(gbuf_content64);
 
-            json_t *kw_command = json_pack("{s:s, s:s}",
+            json_t *kw_command = json_pack("{s:s, s:s, s:s}",
                 "name", priv->mirror_tty_name,
+                "agent_id", priv->mirror_tty_uuid,
                 "content64", content64
             );
 
@@ -1771,6 +1773,10 @@ PRIVATE int ac_tty_mirror_open(hgobj gobj, const char *event, json_t *kw, hgobj 
     json_t *jn_data = kw_get_dict(kw, "data", 0, KW_REQUIRED);
     const char *tty_name = kw_get_str(jn_data, "name", "", KW_REQUIRED);
     snprintf(priv->mirror_tty_name, sizeof(priv->mirror_tty_name), "%s", tty_name);
+
+    const char *tty_uuid = kw_get_str(jn_data, "uuid", "", KW_REQUIRED);
+    snprintf(priv->mirror_tty_uuid, sizeof(priv->mirror_tty_uuid), "%s", tty_uuid);
+
     priv->on_mirror_tty = TRUE;
 
     KW_DECREF(kw);
@@ -1785,6 +1791,7 @@ PRIVATE int ac_tty_mirror_close(hgobj gobj, const char *event, json_t *kw, hgobj
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
     snprintf(priv->mirror_tty_name, sizeof(priv->mirror_tty_name), "%s", "");
+    snprintf(priv->mirror_tty_uuid, sizeof(priv->mirror_tty_uuid), "%s", "");
     priv->on_mirror_tty = FALSE;
     clear_input_line(gobj);
 

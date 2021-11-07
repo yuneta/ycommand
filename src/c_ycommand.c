@@ -614,7 +614,7 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
     if(gobj_trace_level(gobj) & TRACE_UV) {
         trace_msg("<<< on_read_cb %d tty p=%p",
-            nread,
+            (int)nread,
             &priv->uv_tty
         );
     }
@@ -660,7 +660,7 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
             0,
             buf->base,
             nread,
-            ""
+            "on_read_cb"
         );
     }
 

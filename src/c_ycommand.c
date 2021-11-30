@@ -1627,7 +1627,7 @@ PRIVATE int ac_read_json(hgobj gobj, const char *event, json_t *kw, hgobj src)
         KW_DECREF(kw);
         return 0;
     }
-    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    json_t *record = kw_get_dict_value(kw, "data", 0, 0);
     if(!record) {
         printf("%sERROR %d: %s:%s%s\n",
             On_Red BWhite, result, __FUNCTION__, "Internal error, no data", Color_Off
@@ -1674,7 +1674,7 @@ PRIVATE int ac_read_file(hgobj gobj, const char *event, json_t *kw, hgobj src)
         KW_DECREF(kw);
         return 0;
     }
-    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    json_t *record = kw_get_dict_value(kw, "data", 0, 0);
     if(!record) {
         printf("%sERROR %d: %s:%s%s\n",
             On_Red BWhite, result, __FUNCTION__, "Internal error, no data", Color_Off
@@ -1721,7 +1721,7 @@ PRIVATE int ac_read_binary_file(hgobj gobj, const char *event, json_t *kw, hgobj
         KW_DECREF(kw);
         return 0;
     }
-    json_t *record = json_array_get(kw_get_dict_value(kw, "data", 0, 0), 0);
+    json_t *record = kw_get_dict_value(kw, "data", 0, 0);
     if(!record) {
         printf("%sERROR %d: %s:%s%s\n",
             On_Red BWhite, result, __FUNCTION__, "Internal error, no data", Color_Off

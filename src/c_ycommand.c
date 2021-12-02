@@ -1412,7 +1412,7 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
         xcmd++;
         kw_set_subdict_value(kw_command, "__md_iev__", "display_mode", json_string("form"));
     }
-    if(strstr(xcmd, "command=open-console")) {
+    if(strstr(xcmd, "open-console")) {
         struct winsize w;
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 

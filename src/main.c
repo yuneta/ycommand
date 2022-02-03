@@ -441,6 +441,10 @@ int main(int argc, char *argv[])
         gobj_set_gobj_trace(0, "libuv", TRUE, 0);
         gobj_set_gclass_trace(GCLASS_YCOMMAND, "trace-kb", TRUE);
     }
+    if(arguments.verbose == -1) {
+        gobj_set_deep_tracing(TRUE);
+    }
+
     gobj_set_gclass_no_trace(GCLASS_TIMER, "machine", TRUE);
 
 #ifdef DEBUG

@@ -781,8 +781,15 @@ PRIVATE int do_command(hgobj gobj, const char *command)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
-    json_t *jn_resp = gobj_command(priv->gobj_connector, command, 0, gobj);
-    json_decref(jn_resp);
+//     json_t *jn_resp = gobj_command(priv->gobj_connector, command, 0, gobj);
+//     json_decref(jn_resp);
+
+    // Pasalo por el evento para que haga replace_cli_vars()
+    json_t *kw_line = json_object();
+    json_object_set_new(kw_line, "text", json_string(command));
+    gobj_send_event(priv->gobj_editline, "EV_SETTEXT", kw_line, gobj);
+    gobj_send_event(gobj, "EV_COMMAND", 0, priv->gobj_editline);
+
     return 0;
 }
 
@@ -824,15 +831,21 @@ PRIVATE GBUFFER *source2base64(const char *source, char **comment)
 }
 
 /***************************************************************************
- *
+ *  $$ interfere with bash, use ^^ as alternative
  ***************************************************************************/
 PRIVATE GBUFFER * replace_cli_vars(hgobj gobj, const char *command, char **comment)
 {
     GBUFFER *gbuf = gbuf_create(4*1024, gbmem_get_maximum_block(), 0, 0);
     char *command_ = gbmem_strdup(command);
     char *p = command_;
+
+    const char *prefix = "$$";  // default
+    if(strstr(p, "^^")) {
+        prefix = "^^";
+    }
+
     char *n, *f;
-    while((n=strstr(p, "$$"))) {
+    while((n=strstr(p, prefix))) {
         *n = 0;
         gbuf_append(gbuf, p, strlen(p));
 
@@ -842,13 +855,13 @@ PRIVATE GBUFFER * replace_cli_vars(hgobj gobj, const char *command, char **comme
         } else {
             gbuf_decref(gbuf);
             gbmem_free(command_);
-            *comment = "Bad format of $$: use $$(..)";
+            *comment = "Bad format of $$: use $$(...) or ^^(...)";
             return 0;
         }
         if(!f) {
             gbuf_decref(gbuf);
             gbmem_free(command_);
-            *comment = "Bad format of $$: use $$(...)";
+            *comment = "Bad format of $$: use $$(...) or ^^(...)";
             return 0;
         }
         *n = 0;

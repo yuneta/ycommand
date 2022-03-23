@@ -81,7 +81,7 @@ PRIVATE char fixed_config[]= "\
 PRIVATE char variable_config[]= "\
 {                                                                   \n\
     'environment': {                                                \n\
-        'use_system_memory': false,                                  \n\
+        'use_system_memory': true,                                  \n\
         'log_gbmem_info': true,                                     \n\
         'MEM_MIN_BLOCK': 512,                                       \n\
         'MEM_MAX_BLOCK': 209715200,             #^^  200*M          \n\
@@ -95,6 +95,11 @@ PRIVATE char variable_config[]= "\
             'to_udp': {                                             \n\
                 'handler_type': 'udp',                              \n\
                 'url': 'udp://127.0.0.1:1992',                      \n\
+                'handler_options': 255                              \n\
+            },                                                      \n\
+            'to_file': {                                            \n\
+                'handler_type': 'file',                             \n\
+                'filename_mask': 'ycommand-W.log',                  \n\
                 'handler_options': 255                              \n\
             }                                                       \n\
         }                                                           \n\

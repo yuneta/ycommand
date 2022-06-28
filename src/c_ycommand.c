@@ -1892,7 +1892,8 @@ PRIVATE int ac_timeout(hgobj gobj, const char *event, json_t *kw, hgobj src)
 PRIVATE const EVENT input_events[] = {
     // top input
     {"EV_COMMAND",              0, 0, 0},
-    {"EV_MT_COMMAND_ANSWER",    EVF_PUBLIC_EVENT,  0,  0},
+    {"EV_MT_COMMAND_ANSWER",    EVF_PUBLIC_EVENT, 0,  0},
+    {"EV_MT_STATS_ANSWER",      EVF_PUBLIC_EVENT, 0, 0},
     {"EV_EDIT_CONFIG",          EVF_PUBLIC_EVENT, 0, 0},
     {"EV_VIEW_CONFIG",          EVF_PUBLIC_EVENT, 0, 0},
     {"EV_EDIT_YUNO_CONFIG",     EVF_PUBLIC_EVENT, 0, 0},
@@ -1944,6 +1945,7 @@ PRIVATE EV_ACTION ST_DISCONNECTED[] = {
 PRIVATE EV_ACTION ST_CONNECTED[] = {
     {"EV_COMMAND",                  ac_command,                 0},
     {"EV_MT_COMMAND_ANSWER",        ac_command_answer,          0},
+    {"EV_MT_STATS_ANSWER",          ac_command_answer,          0},
     {"EV_EDIT_CONFIG",              ac_edit_config,             0},
     {"EV_VIEW_CONFIG",              ac_view_config,             0},
     {"EV_EDIT_YUNO_CONFIG",         ac_edit_config,             0},

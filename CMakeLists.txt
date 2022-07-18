@@ -12,15 +12,19 @@ set(BIN_DEST_DIR ${CMAKE_INSTALL_PREFIX}/agent)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=c99")
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  add_definitions(-DDEBUG)
-  option(SHOWNOTES "Show preprocessor notes" OFF)
+if(CYGWIN)
+    add_definitions(-D__CYGWIN__)
+endif()
 
-  if(CMAKE_COMPILER_IS_GNUCC)
-    # GCC specific debug options
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -ggdb3 -gdwarf-2")
-    set(AVOID_VERSION -avoid-version)
-  endif(CMAKE_COMPILER_IS_GNUCC)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    add_definitions(-DDEBUG)
+    option(SHOWNOTES "Show preprocessor notes" OFF)
+
+    if(CMAKE_COMPILER_IS_GNUCC)
+        # GCC specific debug options
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -ggdb3 -gdwarf-2")
+        set(AVOID_VERSION -avoid-version)
+    endif(CMAKE_COMPILER_IS_GNUCC)
 endif(CMAKE_BUILD_TYPE MATCHES Debug)
 
 add_definitions(-D_GNU_SOURCE)
@@ -34,55 +38,81 @@ set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /yuneta/development/output/lib)
 ##############################################
 
 SET (YUNO_SRCS
-    src/main.c
-    src/yuno_ycommand.c
-    src/c_ycommand.c
-    src/c_editline.c
-)
+        src/main.c
+        src/yuno_ycommand.c
+        src/c_ycommand.c
+        src/c_editline.c
+        )
 SET (YUNO_HDRS
-    src/yuno_ycommand.h
-    src/c_ycommand.h
-    src/c_editline.h
-)
+        src/yuno_ycommand.h
+        src/c_ycommand.h
+        src/c_editline.h
+        )
 
 ##############################################
 #   yuno
 ##############################################
 ADD_EXECUTABLE(ycommand ${YUNO_SRCS} ${YUNO_HDRS})
 
-TARGET_LINK_LIBRARIES(ycommand
-    /yuneta/development/output/lib/libyuneta-tls.a
-    /yuneta/development/output/lib/libyuneta-core.a
-    /yuneta/development/output/lib/libginsfsm.a
-    /yuneta/development/output/lib/libytls.a
-    /yuneta/development/output/lib/libghelpers.a
-    /yuneta/development/output/lib/libuv.a
-    /yuneta/development/output/lib/liboauth2.a
-    /yuneta/development/output/lib/libcjose.a
-    /yuneta/development/output/lib/libjansson.a
-    /yuneta/development/output/lib/libunwind.a
-    /yuneta/development/output/lib/libpcre2-8.a
-    /yuneta/development/output/lib/libcurl.a  # used by liboauth2
-    /yuneta/development/output/lib/libssl.a
-    /yuneta/development/output/lib/libcrypto.a
+if(NOT CYGWIN)
+    TARGET_LINK_LIBRARIES(ycommand
+        /yuneta/development/output/lib/libyuneta-tls.a
+        /yuneta/development/output/lib/libyuneta-core.a
+        /yuneta/development/output/lib/libginsfsm.a
+        /yuneta/development/output/lib/libytls.a
+        /yuneta/development/output/lib/libghelpers.a
+        /yuneta/development/output/lib/libuv.aª
+        /yuneta/development/output/lib/liboauth2.a
+        /yuneta/development/output/lib/libcjose.a
+        /yuneta/development/output/lib/libjansson.a
+        /yuneta/development/output/lib/libunwind.a
+        /yuneta/development/output/lib/libpcre2-8.a
+        /yuneta/development/output/lib/libcurl.a  # used by liboauth2
+        /yuneta/development/output/lib/libssl.a
+        /yuneta/development/output/lib/libcrypto.a
 
-    pthread dl  # used by libuv
-    lzma        # used by libunwind
-    z rt m
-    uuid
-    util
-)
+        pthread dl  # used by libuv
+        lzma        # used by libunwind
+        z rt m
+        uuid
+        util
+    )
+else(NOT CYGWIN)
+    TARGET_LINK_LIBRARIES(ycommand
+        /yuneta/development/output/lib/libyuneta-tls.a
+        /yuneta/development/output/lib/libyuneta-core.a
+        /yuneta/development/output/lib/libginsfsm.a
+        /yuneta/development/output/lib/libytls.a
+        /yuneta/development/output/lib/libghelpers.a
+        /yuneta/development/output/lib/libuv.a
+        /yuneta/development/output/lib/liboauth2.a
+        /yuneta/development/output/lib/libcjose.a
+        /yuneta/development/output/lib/libjansson.a
+        /yuneta/development/output/lib/libpcre2-8.a
+        /yuneta/development/output/lib/libcurl.a  # used by liboauth2
+        /yuneta/development/output/lib/libssl.a
+        /yuneta/development/output/lib/libcrypto.a
+        /yuneta/development/output/lib/libargp.a
+
+        intl
+        pthread dl  # used by libuv
+        lzma        # used by libunwind
+        rt m
+        uuid
+        util
+    )
+endif(NOT CYGWIN)
 
 ##############################################
 #   Installation
 ##############################################
 install(
-    TARGETS ycommand
-    PERMISSIONS
-    OWNER_READ OWNER_WRITE OWNER_EXECUTE
-    GROUP_READ GROUP_WRITE GROUP_EXECUTE
-    WORLD_READ WORLD_EXECUTE
-    DESTINATION ${BIN_DEST_DIR}
+        TARGETS ycommand
+        PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_WRITE GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+        DESTINATION ${BIN_DEST_DIR}
 )
 
 # compile in Release mode optimized but adding debug symbols, useful for profiling :

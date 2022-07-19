@@ -61,7 +61,7 @@ if(NOT CYGWIN)
         /yuneta/development/output/lib/libginsfsm.a
         /yuneta/development/output/lib/libytls.a
         /yuneta/development/output/lib/libghelpers.a
-        /yuneta/development/output/lib/libuv.aª
+        /yuneta/development/output/lib/libuv.a
         /yuneta/development/output/lib/liboauth2.a
         /yuneta/development/output/lib/libcjose.a
         /yuneta/development/output/lib/libjansson.a

@@ -66,6 +66,7 @@ if(NOT CYGWIN)
         /yuneta/development/output/lib/libcjose.a
         /yuneta/development/output/lib/libjansson.a
         /yuneta/development/output/lib/libunwind.a
+        /yuneta/development/output/lib/libpcre2-posix.a
         /yuneta/development/output/lib/libpcre2-8.a
         /yuneta/development/output/lib/libcurl.a  # used by liboauth2
         /yuneta/development/output/lib/libssl.a
@@ -88,6 +89,7 @@ else(NOT CYGWIN)
         /yuneta/development/output/lib/liboauth2.a
         /yuneta/development/output/lib/libcjose.a
         /yuneta/development/output/lib/libjansson.a
+        /yuneta/development/output/lib/libpcre2-posix.a
         /yuneta/development/output/lib/libpcre2-8.a
         /yuneta/development/output/lib/libcurl.a  # used by liboauth2
         /yuneta/development/output/lib/libssl.a

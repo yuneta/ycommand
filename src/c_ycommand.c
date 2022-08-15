@@ -81,6 +81,7 @@
  ***************************************************************************/
 PRIVATE void on_alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+PRIVATE void on_close_cb(uv_handle_t* handle);
 PRIVATE void do_close(hgobj gobj);
 PRIVATE int cmd_connect(hgobj gobj);
 PRIVATE int do_command(hgobj gobj, const char *command);
@@ -732,6 +733,21 @@ PRIVATE void on_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 }
 
 /***************************************************************************
+- *  Only NOW you can destroy this gobj,
+- *  when uv has released the handler.
+- ***************************************************************************/
+PRIVATE void on_close_cb(uv_handle_t* handle)
+{
+    hgobj gobj = handle->data;
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
+    if(gobj_trace_level(gobj) & TRACE_UV) {
+        trace_msg("<<< on_close_cb tcp0 p=%p", &priv->uv_tty);
+    }
+    priv->uv_handler_active = 0;
+}
+
+/***************************************************************************
  *
  ***************************************************************************/
 PRIVATE void do_close(hgobj gobj)
@@ -756,8 +772,7 @@ PRIVATE void do_close(hgobj gobj)
     if(gobj_trace_level(gobj) & TRACE_UV) {
         trace_msg(">>> uv_close tty p=%p", &priv->uv_tty);
     }
-    uv_close((uv_handle_t *)&priv->uv_tty, 0);
-    priv->uv_handler_active = 0;
+    uv_close((uv_handle_t *)&priv->uv_tty, on_close_cb);
 }
 
 /***************************************************************************

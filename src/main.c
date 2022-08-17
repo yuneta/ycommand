@@ -45,6 +45,7 @@ struct arguments
     int print_version;
     int print_yuneta_version;
     int interactive;
+    int print_with_metadata;
 };
 
 /***************************************************************************
@@ -170,6 +171,7 @@ static struct argp_option options[] = {
 {"verbose",         'l',    "LEVEL",    0,      "Verbose level.", 50},
 {"version",         'v',    0,          0,      "Print version.", 50},
 {"yuneta-version",  'V',    0,          0,      "Print yuneta version", 50},
+{"with-metadata",   'm',    0,          0,      "Print with metadata", 50},
 {0}
 };
 
@@ -252,6 +254,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
         }
         break;
 
+    case 'm':
+        arguments->print_with_metadata = 1;
+        break;
     case 'r':
         arguments->print_role = 1;
         break;
@@ -329,7 +334,7 @@ int main(int argc, char *argv[])
      *  Save args
      */
     char argv0[512];
-    char *argvs[]= {argv0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    char *argvs[]= {argv0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     memset(argv0, 0, sizeof(argv0));
     strncpy(argv0, argv[0], sizeof(argv0)-1);
     int idx = 1;
@@ -356,7 +361,7 @@ int main(int argc, char *argv[])
      */
     {
         json_t *kw_utility = json_pack(
-            "{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s}}",
+            "{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:b}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
@@ -371,7 +376,8 @@ int main(int argc, char *argv[])
             "YCommand.realm_role", arguments.realm_role,
             "YCommand.yuno_role", arguments.yuno_role,
             "YCommand.yuno_name", arguments.yuno_name,
-            "YCommand.yuno_service", arguments.yuno_service
+            "YCommand.yuno_service", arguments.yuno_service,
+            "YCommand.print_with_metadata", arguments.print_with_metadata
         );
 
         char *param1_ = json_dumps(kw_utility, JSON_COMPACT);

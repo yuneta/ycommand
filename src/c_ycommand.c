@@ -146,6 +146,7 @@ struct keytable_s {
  *---------------------------------------------*/
 PRIVATE sdata_desc_t tattr_desc[] = {
 /*-ATTR-type------------name----------------flag--------default---------description---------- */
+SDATA (ASN_BOOLEAN,     "print_with_metadata",0,        0,              "Print response with metadata."),
 SDATA (ASN_BOOLEAN,     "verbose",          0,          1,              "Verbose mode."),
 SDATA (ASN_BOOLEAN,     "interactive",      0,          0,              "Interactive."),
 SDATA (ASN_OCTET_STR,   "command",          0,          "",             "Command."),
@@ -1485,7 +1486,13 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
                 const char *data = json_string_value(jn_data);
                 printf("%s\n", data);
             } else {
-                print_json(jn_data);
+                if(!gobj_read_bool_attr(gobj, "print_with_metadata")) {
+                    jn_data = kw_filter_metadata(jn_data);
+                    print_json(jn_data);
+                    JSON_DECREF(jn_data);
+                } else {
+                    print_json(jn_data);
+                }
             }
         }
         KW_DECREF(kw);

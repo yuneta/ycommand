@@ -994,14 +994,6 @@ PRIVATE int display_webix_result(
         }
     }
 
-    if(result < 0) {
-        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
-    } else {
-        if(!empty_string(comment)) {
-            printf("%s\n", comment);
-        }
-    }
-
     if(json_is_array(jn_data)) {
         if (mode_form) {
             char *data = json2str(jn_data);
@@ -1031,6 +1023,15 @@ PRIVATE int display_webix_result(
         printf("%s\n", data);
         gbmem_free(data);
     }
+
+    if(result < 0) {
+        printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
+    } else {
+        if(!empty_string(comment)) {
+            printf("%s\n", comment);
+        }
+    }
+
     clear_input_line(gobj);
 
     JSON_DECREF(webix);
@@ -1478,9 +1479,6 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
         if(result != 0){
             printf("%sERROR %d: %s%s\n", On_Red BWhite, result, comment, Color_Off);
         } else {
-            if(!empty_string(comment)) {
-                printf("%s\n", comment);
-            }
             json_t *jn_data = WEBIX_DATA(kw);
             if(json_is_string(jn_data)) {
                 const char *data = json_string_value(jn_data);
@@ -1493,6 +1491,9 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
                 } else {
                     print_json(jn_data);
                 }
+            }
+            if(!empty_string(comment)) {
+                printf("%s\n", comment);
             }
         }
         KW_DECREF(kw);

@@ -150,7 +150,7 @@ typedef struct linenoiseCompletions {
 PRIVATE sdata_desc_t tattr_desc[] = {
 SDATA (ASN_OCTET_STR,   "prompt",               0,  "ycommand> ", "Prompt"),
 SDATA (ASN_OCTET_STR,   "history_file",         0,  0, "History file"),
-SDATA (ASN_INTEGER,     "history_max_len",      0,  10000, "history max len (max lines)"),
+SDATA (ASN_INTEGER,     "history_max_len",      0,  100000, "history max len (max lines)"),
 SDATA (ASN_INTEGER,     "buffer_size",          0,  4*1024, "edition buffer size"),
 SDATA (ASN_INTEGER,     "x",                    0,  0, "x window coord"),
 SDATA (ASN_INTEGER,     "y",                    0,  0, "y window coord"),

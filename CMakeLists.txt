@@ -1,8 +1,8 @@
 ##############################################
 #   CMake
 ##############################################
-project(ycommand C)
 cmake_minimum_required(VERSION 3.0)
+project(ycommand C)
 include(CheckIncludeFiles)
 include(CheckSymbolExists)
 

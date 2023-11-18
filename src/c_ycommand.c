@@ -151,12 +151,12 @@ SDATA (ASN_BOOLEAN,     "verbose",          0,          1,              "Verbose
 SDATA (ASN_BOOLEAN,     "interactive",      0,          0,              "Interactive."),
 SDATA (ASN_OCTET_STR,   "command",          0,          "",             "Command."),
 SDATA (ASN_OCTET_STR,   "url",              0,          "ws://127.0.0.1:1991",  "Url to get Statistics. Can be a ip/hostname or a full url"),
-SDATA (ASN_OCTET_STR,   "realm_role",       0,          "",             "Realm role (used for Authorized Party, 'azp' field of jwt, client_id in keycloak)"),
 SDATA (ASN_OCTET_STR,   "yuno_name",        0,          "",             "Yuno name"),
 SDATA (ASN_OCTET_STR,   "yuno_role",        0,          "yuneta_agent", "Yuno role"),
 SDATA (ASN_OCTET_STR,   "yuno_service",     0,          "agent",        "Yuno service"),
 SDATA (ASN_OCTET_STR,   "auth_system",      0,          "",             "OpenID System(interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "auth_url",         0,          "",             "OpenID Endpoint(interactive jwt)"),
+SDATA (ASN_OCTET_STR,   "azp",              0,          "",             "azp (OAuth2 Authorized Party)"),
 SDATA (ASN_OCTET_STR,   "user_id",          0,          "",             "OAuth2 User Id (interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "user_passw",       0,          "",             "OAuth2 User password (interactive jwt)"),
 SDATA (ASN_OCTET_STR,   "jwt",              0,          "",             "Jwt"),
@@ -395,7 +395,7 @@ PRIVATE int do_authenticate_task(hgobj gobj)
         "auth_url", gobj_read_str_attr(gobj, "auth_url"),
         "user_id", gobj_read_str_attr(gobj, "user_id"),
         "user_passw", gobj_read_str_attr(gobj, "user_passw"),
-        "azp", gobj_read_str_attr(gobj, "realm_role")   // Our realm is the Authorized Party in jwt
+        "azp", gobj_read_str_attr(gobj, "azp")
     );
 
     hgobj gobj_task = gobj_create_unique("task-authenticate", GCLASS_TASK_AUTHENTICATE, kw, gobj);

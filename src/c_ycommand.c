@@ -793,7 +793,7 @@ PRIVATE int do_command(hgobj gobj, const char *command)
 //     json_t *jn_resp = gobj_command(priv->gobj_connector, command, 0, gobj);
 //     json_decref(jn_resp);
 
-    // Pasalo por el evento para que haga replace_cli_vars()
+    // Pasalo por el evento para que haga replace_cli_vars_for_yuneta()
     json_t *kw_line = json_object();
     json_object_set_new(kw_line, "text", json_string(command));
     gobj_send_event(priv->gobj_editline, "EV_SETTEXT", kw_line, gobj);
@@ -805,7 +805,7 @@ PRIVATE int do_command(hgobj gobj, const char *command)
 /***************************************************************************
  *
  ***************************************************************************/
-PRIVATE GBUFFER *source2base64(const char *source, char **comment)
+PRIVATE GBUFFER *source2base64_for_yuneta(const char *source, char **comment)
 {
     /*------------------------------------------------*
      *          Check source
@@ -840,9 +840,62 @@ PRIVATE GBUFFER *source2base64(const char *source, char **comment)
 }
 
 /***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE const char *get_yunetas_base(void)
+{
+    // Define the default value
+    const char* default_value = "/yuneta/development/outputs/yunos";
+
+    // Get the value of the environment variable YUNETAS_BASE
+    const char* yunetas_base = getenv("YUNETAS_BASE");
+
+    // Return the environment variable value if it's set, otherwise the default value
+    return yunetas_base ? yunetas_base : default_value;
+}
+
+/***************************************************************************
+ *
+ ***************************************************************************/
+PRIVATE GBUFFER *source2base64_for_yunetas(const char *source, char **comment)
+{
+    /*------------------------------------------------*
+     *          Check source
+     *  Frequently, You want install the output
+     *  of your yuno's make install command.
+     *------------------------------------------------*/
+    if(empty_string(source)) {
+        *comment = "source not found";
+        return 0;
+    }
+
+    char path[NAME_MAX];
+    if(access(source, 0)==0 && is_regular_file(source)) {
+        snprintf(path, sizeof(path), "%s", source);
+    } else {
+        const char *yunetas_base = get_yunetas_base();
+        build_path2(path, sizeof(path), yunetas_base, source);
+    }
+
+    if(access(path, 0)!=0) {
+        *comment = "source not found";
+        return 0;
+    }
+    if(!is_regular_file(path)) {
+        *comment = "source is not a regular file";
+        return 0;
+    }
+    GBUFFER *gbuf_b64 = gbuf_file2base64(path);
+    if(!gbuf_b64) {
+        *comment = "conversion to base64 failed";
+    }
+    return gbuf_b64;
+}
+
+/***************************************************************************
  *  $$ interfere with bash, use ^^ as alternative
  ***************************************************************************/
-PRIVATE GBUFFER * replace_cli_vars(hgobj gobj, const char *command, char **comment)
+PRIVATE GBUFFER * replace_cli_vars_for_yuneta(hgobj gobj, const char *command, char **comment)
 {
     GBUFFER *gbuf = gbuf_create(4*1024, gbmem_get_maximum_block(), 0, 0);
     char *command_ = gbmem_strdup(command);
@@ -878,11 +931,15 @@ PRIVATE GBUFFER * replace_cli_vars(hgobj gobj, const char *command, char **comme
         *f = 0;
         f++;
 
-        GBUFFER *gbuf_b64 = source2base64(n, comment);
+        // YunetaS precedence over Yuneta
+        GBUFFER *gbuf_b64 = source2base64_for_yunetas(n, comment);
         if(!gbuf_b64) {
-            gbuf_decref(gbuf);
-            gbmem_free(command_);
-            return 0;
+            gbuf_b64 = source2base64_for_yuneta(n, comment);
+            if(!gbuf_b64) {
+                gbuf_decref(gbuf);
+                gbmem_free(command_);
+                return 0;
+            }
         }
 
         gbuf_append(gbuf, "'", 1);
@@ -1421,7 +1478,7 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
     }
 
     char *comment;
-    GBUFFER *gbuf_parsed_command = replace_cli_vars(gobj, command, &comment);
+    GBUFFER *gbuf_parsed_command = replace_cli_vars_for_yuneta(gobj, command, &comment);
     if(!gbuf_parsed_command) {
         printf("%s%s%s\n", On_Red BWhite, command, Color_Off);
         clear_input_line(gobj);

@@ -149,6 +149,7 @@ PRIVATE sdata_desc_t tattr_desc[] = {
 SDATA (ASN_BOOLEAN,     "print_with_metadata",0,        0,              "Print response with metadata."),
 SDATA (ASN_BOOLEAN,     "verbose",          0,          1,              "Verbose mode."),
 SDATA (ASN_BOOLEAN,     "interactive",      0,          0,              "Interactive."),
+SDATA (ASN_UNSIGNED,    "wait",             0,          "2",            "Wait n seconds until exit"),
 SDATA (ASN_OCTET_STR,   "command",          0,          "",             "Command."),
 SDATA (ASN_OCTET_STR,   "url",              0,          "ws://127.0.0.1:1991",  "Url to get Statistics. Can be a ip/hostname or a full url"),
 SDATA (ASN_OCTET_STR,   "yuno_name",        0,          "",             "Yuno name"),
@@ -186,10 +187,12 @@ PRIVATE const trace_level_t s_user_trace_level[16] = {
 typedef struct _PRIVATE_DATA {
     int32_t verbose;
     int32_t interactive;
+    uint32_t wait;
     uv_tty_t uv_tty;
     char uv_handler_active;
     char uv_read_active;
     hgobj gobj_connector;
+    hgobj timer;
     hgobj gobj_editline;
     grow_buffer_t bfinput;
 
@@ -257,6 +260,7 @@ PRIVATE void mt_create(hgobj gobj)
 
     priv->gobj_editline = gobj_create("", GCLASS_EDITLINE, kw_editline, gobj);
 
+    priv->timer = gobj_create("", GCLASS_TIMER, 0, gobj);
     /*
      *  Do copy of heavy used parameters, for quick access.
      *  HACK The writable attributes must be repeated in mt_writing method.
@@ -264,6 +268,7 @@ PRIVATE void mt_create(hgobj gobj)
     SET_PRIV(gobj_connector,        gobj_read_pointer_attr)
     SET_PRIV(verbose,               gobj_read_bool_attr)
     SET_PRIV(interactive,           gobj_read_bool_attr)
+    SET_PRIV(wait,                  gobj_read_uint32_attr)
 }
 
 /***************************************************************************
@@ -316,6 +321,8 @@ PRIVATE int mt_start(hgobj gobj)
 {
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
 
+    gobj_start(priv->timer);
+
     if(priv->uv_handler_active) {
         log_error(LOG_OPT_TRACE_STACK,
             "gobj",         "%s", gobj_full_name(gobj),
@@ -365,6 +372,9 @@ PRIVATE int mt_stop(hgobj gobj)
     PRIVATE_DATA *priv = gobj_priv_data(gobj);
     uv_tty_set_mode(&priv->uv_tty, UV_TTY_MODE_NORMAL);
     uv_tty_reset_mode();
+
+    clear_timeout(priv->timer);
+    gobj_stop(priv->timer);
 
     do_close(gobj);
     gobj_stop_tree(gobj);
@@ -1532,6 +1542,8 @@ PRIVATE int ac_command(hgobj gobj, const char *event, json_t *kw, hgobj src)
  ***************************************************************************/
 PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
+    PRIVATE_DATA *priv = gobj_priv_data(gobj);
+
     if(gobj_read_bool_attr(gobj, "interactive")) {
         return display_webix_result(
             gobj,
@@ -1562,7 +1574,9 @@ PRIVATE int ac_command_answer(hgobj gobj, const char *event, json_t *kw, hgobj s
         }
         KW_DECREF(kw);
         gobj_set_exit_code(result);
-        gobj_shutdown();
+
+        set_timeout(priv->timer, priv->wait * 1000);
+        //gobj_shutdown();
     }
     return 0;
 }
@@ -1955,6 +1969,8 @@ PRIVATE int ac_tty_mirror_data(hgobj gobj, const char *event, json_t *kw, hgobj 
  ***************************************************************************/
 PRIVATE int ac_timeout(hgobj gobj, const char *event, json_t *kw, hgobj src)
 {
+    gobj_shutdown();
+
     KW_DECREF(kw);
     return 0;
 }

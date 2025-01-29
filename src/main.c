@@ -32,6 +32,7 @@ struct arguments
     char *yuno_name;
     char *yuno_service;
     char *command;
+    int wait;
 
     char *auth_system;
     char *auth_url;
@@ -148,6 +149,7 @@ static struct argp_option options[] = {
 {0,                 0,      0,          0,      "Remote Service keys", 10},
 {"command",         'c',    "COMMAND",  0,      "Command.", 10},
 {"interactive",     'i',    0,          0,      "Interactive.", 10},
+{"wait",            'w',    "SECONDS",  0,      "Wait until exit, default 2.", 10},
 
 {0,                 0,      0,          0,      "OAuth2 keys", 20},
 {"auth_system",     'K',    "AUTH_SYSTEM",0,    "OpenID System(default: keycloak, to get now a jwt)", 20},
@@ -219,6 +221,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
         break;
     case 'i':
         arguments->interactive = 1;
+        break;
+    case 'w':
+        if(arg) {
+            arguments->wait = atoi(arg);
+        }
         break;
 
     case 'Z':
@@ -323,6 +330,7 @@ int main(int argc, char *argv[])
     arguments.user_id = "";
     arguments.user_passw = "";
     arguments.jwt = "";
+    arguments.wait = 2;
 
     /*
      *  Save args
@@ -355,11 +363,12 @@ int main(int argc, char *argv[])
      */
     {
         json_t *kw_utility = json_pack(
-            "{s:{s:b, s:s, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:b}}",
+            "{s:{s:b, s:s, s:i, s:i, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:s, s:b}}",
             "global",
             "YCommand.verbose", arguments.verbose,
             "YCommand.command", arguments.command,
             "YCommand.interactive", arguments.interactive,
+            "YCommand.wait", arguments.wait,
             "YCommand.auth_system", arguments.auth_system,
             "YCommand.auth_url", arguments.auth_url,
             "YCommand.user_id", arguments.user_id,
